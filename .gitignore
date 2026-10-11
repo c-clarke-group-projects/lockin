@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node and frontend
+node_modules/
+dist/
+build/
+.vite/
+*.local
+npm-debug.log*
+yarn-error.log*
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+service-account*.json
+
+# Uploaded material and generated files
+uploads/
+storage/
+*.pdf
+!docs/*.pdf
+exports/
+*.sqlite3
+*.db
+
+# Logs
+logs/
+*.log
+
+# Editors and operating system
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
