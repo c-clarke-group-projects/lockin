@@ -1,6 +1,6 @@
 # Test strategy
 
-Source: WBS 5, backlog PB-29, PB-30, PB-31. Owner   , with every member writing tests
+Source: WBS 5, backlog PB-29, PB-30, PB-31. Owner:Isiwara   , with every member writing tests
 for the code they write.
 
 Testing runs alongside the build from week 2, not after it. Week 5 is for system tests and
@@ -62,26 +62,67 @@ A pull request that changes any of the above and adds no test is not merged.
 
 ## 5. Test cases for the 8 MVP features
 
-This is WBS 2.2.6, written in week 1 before the features exist. 1 short list per feature,
-each case written as: what the user does, what should happen.
+This is WBS 2.2.6, written in week 1 before the features exist. 1 short list per feature, each case written as: what the user does, what should happen.
 
-1. Upload and generate. Text PDF, scanned PDF, oversized file, wrong file type, 5
-   questions, 30 questions, a PDF where some pages are empty.
-2. Add existing questions. Manual question with 4 options, a question missing an option,
-   CSV with all valid rows, CSV with some invalid rows, CSV with the wrong columns.
-3. Source tracking. Generated question shows the right page and a snippet that exists on
-   that page, manual question with no source, manual question with a source note.
-4. Rooms. Code is 6 digits, join by code, join by link, join by QR, wrong code, duplicate
-   name, room that has ended.
-5. Live play. Question appears on all screens together, 1 answer only, answer after the
-   lock, everyone answers before the timer, nobody answers, host moves to the next
-   question, host ends the quiz.
-6. Reveal and challenge. Correct option highlighted, distribution shown, snippet shown,
-   flag once, flag twice, host voids a question, leaderboard recalculated.
-7. Gap report. Percent wrong per page, sorted worst first, questions with no source
-   grouped separately, a voided question excluded.
-8. Host accounts. Register, duplicate email, wrong password, token required on host pages,
-   logout ends the session.
+### 1. Upload and generate
+- **Text PDF upload:** Host uploads a text based PDF. Platform extracts text per page and generates valid questions.
+- **Scanned PDF:** Host uploads a scanned PDF with no text. Platform detects missing text and alerts the host clearly.
+- **Oversized file:** Host uploads a PDF exceeding the size limit. Upload is rejected with a clear message.
+- **Wrong file type:** Host uploads a non PDF file (e.g. DOCX or PNG). Request is rejected.
+- **5 questions requested:** Host requests 5 questions. Platform generates 5 questions with 4 options each.
+- **30 questions requested:** Host requests 30 questions. Platform handles batch generation without timeout.
+- **Empty pages in PDF:** Host uploads a PDF with empty pages. System skips empty pages, logs them, and continues generation.
+
+### 2. Add existing questions
+- **Manual question:** Host enters a question text with 4 options and marks 1 correct answer. Question saves properly.
+- **Missing option:** Host attempts to save a manual question with only 3 options. Validation prevents saving.
+- **Valid CSV import:** Host uploads a CSV matching the required template. All questions import successfully.
+- **CSV with invalid rows:** Host uploads a CSV where some rows have missing fields. Valid rows import; bad rows are reported in the rejection list.
+- **CSV wrong columns:** Host uploads a CSV with incorrect headers. Import is rejected with schema error details.
+
+### 3. Source tracking
+- **AI source mapping:** Host views generated question. Displays correct page number and exact quote snippet matching the PDF page.
+- **Manual without source:** Host saves manual question leaving source field blank. Question renders without source note.
+- **Manual with source:** Host adds custom source note to manual question. Note appears in reveal screen during quiz.
+
+### 4. Rooms
+- **6 digit code:** Host opens saved quiz and creates a room. Platform displays a unique 6 digit join code, join link, and QR code.
+- **Join by code:** Participant enters 6 digit code and display name. Participant enters lobby successfully.
+- **Join by link:** Participant clicks join link. Participant lands directly on display name entry screen.
+- **Join by QR:** Participant scans QR code on phone. Join page opens in phone browser.
+- **Wrong code:** Participant enters an invalid or non-existent 6 digit code. System displays error message.
+- **Duplicate name:** Second participant enters an existing display name in the same room. System prompts for a unique name.
+- **Ended room:** Participant attempts to join a room that was closed. Join is refused.
+
+### 5. Live play
+- **Synchronized display:** Host starts question. Question text, options, and timer appear simultaneously on big screen and participant phones.
+- **1 answer only:** Participant taps an option. Selection locks and cannot be changed.
+- **Answer after lock:** Participant attempts to answer after time expires. Submission is rejected.
+- **Everyone answers early:** All joined participants submit answers before timer ends. Timer stops early and moves to reveal screen.
+- **Nobody answers:** Timer expires with 0 answers. System locks question with 0 points awarded to all players.
+- **Host next question:** Host presses next. System transitions all connected devices to the next question.
+- **Host ends quiz:** Host closes session early. System jumps directly to final results screen.
+
+### 6. Reveal and challenge
+- **Correct option highlight:** Reveal screen highlights the correct option and shows answer distribution percentages.
+- **Snippet display:** Source snippet displays on the reveal screen for verification.
+- **Flag once:** Participant taps challenge button. Flag is recorded on server and incremented on host screen.
+- **Flag twice:** Participant attempts to tap challenge button twice on the same question. Second request is ignored.
+- **Host voids question:** Host presses void. Platform removes all points earned for this question across all participants.
+- **Leaderboard recalculated:** Leaderboard updates live to reflect current rankings after void or question end.
+
+### 7. Gap report
+- **Percent wrong per page:** Gap report calculates wrong answer percentage per PDF page and displays top weak areas.
+- **Sorted worst first:** Pages with the highest percentage of wrong answers appear at the top of the report.
+- **Ungrouped manual questions:** Manual questions without a page source are listed under a separate manual section.
+- **Voided question excluded:** Questions voided by the host during live play are excluded from gap percentage calculations.
+
+### 8. Host accounts
+- **Register:** New host registers with valid email and password. Account is created and password is stored as password hash.
+- **Duplicate email:** Host registers with an existing email. Registration is refused with an error.
+- **Wrong password:** Host attempts login with incorrect password. Login is denied.
+- **Token required:** User attempts to access host dashboard without authentication token. Request is redirected to login.
+- **Logout:** Host clicks logout. Session token is invalidated and host is returned to login screen.
 
 ## 6. Full game test, week 5
 
