@@ -126,6 +126,7 @@ in the decision log below.
 | D4 | Set the retention period for uploaded files and session results | Before the trial |  |
 | D5 | Choose a product name and check it is not already in use | Week 5 | Team |
 | D6 | Find trial teachers and 1 study group | Week 5 |  |
+| D7 | Confirm quiz deletion behaviour when a quiz has sessions | Before quiz deletion is merged | Team |
 
 ## 10. Decision log
 
@@ -137,3 +138,4 @@ lasting technical effect also get a file in `docs/decisions`.
 |---|---|---|---|---|
 | 2026-10-10 | Repository structure is 1 repository with `backend` and `frontend` folders, documentation in `docs`, plan at the root | Keshan | Matches the proposal and the week 1 work package 2.1 | ADR-0001 |
 | 2026-10-10 | No AI attribution of any kind in commits, pull requests, documentation or code | Keshan | The work is recorded under the team member who submits it | `CLAUDE.md` section 1 |
+| 2026-10-26 | Proposed: reject quiz deletion with 409 when any session exists; otherwise delete the quiz and its questions | Team confirmation pending | Prevent session results from being removed silently; proposed for SCRUM-87 | D7, proposed |
