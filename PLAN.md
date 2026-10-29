@@ -52,12 +52,20 @@ The MVP is a web app that works in a phone browser.
 
 | Name | Main area of work |
 |---|---|
-|  | Backend: live rooms, WebSockets, scoring, deployment, code review |
-|  | Backend: PDF extraction, AI question generation, gap report |
-|  | Backend: database, login, questions API, challenge flags |
-|  | Frontend: host login, dashboard, question review, reports |
-|  | Frontend: participant join and answer screens, host big screen |
-|  | Testing, test plan, user guide, final report |
+| Keshan | Scrum master. Live room core: lobby, question broadcast, reconnect, deployment. Leads Rooms and live play |
+| Isiwara | PDF to questions: page text, AI interface, retry and backoff, validation. Leads AI question generation |
+| Sasmitha | Stored data: upload API, skipped pages, question editing, flag and void. Leads PDF upload and Questions API |
+| Nihansa | Host side: login API, token check, gap report backend, final demo. Leads Host accounts and Host screens |
+| Dulanjana | Running the live room: big screen reveal, phone and slow network test, trial, feedback. Leads Challenge and gap report, Participant and big screen |
+| Janath | Quality on real devices: scoring tests, full game test, load test, final report. Leads Testing and Release |
+| Vishmi | Host screens: login and register, dashboard and upload, question review, user guide |
+| Lakmal Perera | Question import end to end: manual add API, CSV import API, CSV page, flagged list |
+| Tharindu | Room and big screen: room code and QR, join page, big screen lobby, leaderboard view |
+| 0071 | Answer to result: answer screen, scoring, leaderboard, results page |
+| Helanga | Logs and automated tests: AI logging, validation tests, API tests, log review |
+
+Team grew from 6 to 11 at the start of week 2. Per task owners are in
+`docs/gantt_assignments.html` and in Jira.
 
 ## 4. Timeline, 6 weeks
 
@@ -137,3 +145,8 @@ lasting technical effect also get a file in `docs/decisions`.
 |---|---|---|---|---|
 | 2026-10-10 | Repository structure is 1 repository with `backend` and `frontend` folders, documentation in `docs`, plan at the root | Keshan | Matches the proposal and the week 1 work package 2.1 | ADR-0001 |
 | 2026-10-10 | No AI attribution of any kind in commits, pull requests, documentation or code | Keshan | The work is recorded under the team member who submits it | `CLAUDE.md` section 1 |
+| 2026-10-19 | Team grows to 11. Every member gets 4 subtasks from the original Gantt from week 2 in 1 connected area. Keshan and Isiwara, who know the stack, keep live rooms and the AI pipeline and review all pull requests. Main tasks are led by the original 6 members: Nihansa (Host accounts, Host screens), Dulanjana (Challenge and gap report, Participant and big screen), Sasmitha (PDF upload, Questions API), Janath (Testing, Release), Isiwara (AI question generation), Keshan (Rooms and live play). The 5 new members get 9 of the 11 screens. Members who meet in person keep the 2 device bound screens and all tasks needing people in the room. Bug fixing is a shared queue triaged by Keshan | Keshan, with founder approval | Equal workload, each member keeps the context of 1 part of the application, and work matches experience and who can be in the room. 11 extra tasks were proposed in `docs/gantt_assignments.html`, see the next entry | `docs/gantt_assignments.html` |
+| 2026-10-19 | Approve the 11 proposed subtasks: 5.5, 6.4, 8.4, 9.6, 9.7, 10.7, 10.8, 11.8, 11.9, 12.7, 12.8. Every member now has 5 subtasks from week 2 | Keshan | Each covers a backlog acceptance criterion or repository rule that had no row on the original Gantt (PB-07, PB-13, PB-16, PB-17, PB-21, PB-26, PB-28, PB-29, PB-34, and trial preparation) | `docs/gantt_assignments.html` |
+| 2026-10-26 | Proposed: WebSocket message envelope and field names as in `docs/WEBSOCKET_PROTOCOL.md` version 2, section 2 | Team confirmation pending, weekly meeting | Backend and frontend need 1 exact shape before the room and WebSocket client branches go further. SCRUM-17 | `docs/WEBSOCKET_PROTOCOL.md` section 8, proposed |
+| 2026-10-26 | Proposed: the phone counts the timer down from `remaining_ms` and the server decides the lock, no server tick | Team confirmation pending, weekly meeting | 1 message per question instead of 1 per second on school internet. Revisit if the week 5 load test shows drift | `docs/WEBSOCKET_PROTOCOL.md` section 8, proposed |
+| 2026-10-26 | Proposed: if the host disconnects mid game, the current question locks on the server timer, the reveal is sent, then the room waits until the host reconnects with `host_join`. No automatic end in the MVP | Team confirmation pending, weekly meeting | No scores are lost, and only the host moves the game on | `docs/WEBSOCKET_PROTOCOL.md` section 8, proposed |
