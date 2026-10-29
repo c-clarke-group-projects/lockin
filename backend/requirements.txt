@@ -1,7 +1,27 @@
-# Backend dependencies.
-# Empty until PB-01 in week 2. Add a package only when it is actually used, pin the
-# version, and say in the pull request why it is needed. Ask before adding anything paid.
-#
-# Expected from the proposal: fastapi, uvicorn, sqlalchemy, alembic, psycopg, redis,
-# pdfplumber, qrcode, pydantic, python-jose or an equivalent for tokens, passlib for
-# hashing, httpx, pytest.
+# Backend dependencies for Lockin platform.
+# Pinned versions added for PB-01, PB-02, and PB-14.
+
+# Web framework and ASGI server for HTTP API and WebSockets
+fastapi==0.162.0
+uvicorn==0.54.0
+
+# Data validation and environment settings
+pydantic==2.14.1
+python-dotenv==1.2.4
+
+# Database connection and ORM for PostgreSQL tables
+sqlalchemy==2.1.6
+psycopg==3.3.6
+
+# Local QR code generation with Pillow image backend (PB-14)
+qrcode==8.2
+pillow==12.3.0
+
+# Host authentication and JWT token handling (PB-02, PB-14)
+pyjwt==2.15.1
+cryptography==50.0.2
+
+# Test runner and HTTP test client
+pytest==9.2.0
+pytest-asyncio==1.4.1
+httpx==0.28.1

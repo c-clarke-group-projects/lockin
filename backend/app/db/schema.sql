@@ -13,18 +13,17 @@ CREATE TABLE materials (
     uploaded_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE material_page (
+CREATE TABLE material_pages (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     material_id BIGINT NOT NULL REFERENCES materials(id),
     page_number INTEGER NOT NULL CHECK (page_number >= 1),
     text TEXT NOT NULL DEFAULT '',
     UNIQUE (material_id, page_number)
-
 );
 
 CREATE TABLE quizzes (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    hot_id BIGINT NOT NULL REFERENCES quizzes(id),
+    host_id BIGINT NOT NULL REFERENCES hosts(id),
     title TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -70,7 +69,7 @@ CREATE UNIQUE INDEX unique_active_session_join_code
 ON sessions (join_code)
 WHERE status IN ('waiting', 'running');
 
-CREATE TABLE answers (
+CREATE TABLE participants (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     session_id BIGINT NOT NULL REFERENCES sessions(id),
     display_name VARCHAR(100) NOT NULL,
