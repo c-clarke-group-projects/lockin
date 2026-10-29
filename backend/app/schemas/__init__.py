@@ -8,3 +8,4 @@ __all__ = [
     "QuizDetailResponse",
     "QuizListItem",
 ]
+

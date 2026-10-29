@@ -59,3 +59,4 @@ class QuestionResponse(BaseModel):
     source_note: str | None = None
     source_page_id: int | None = None
     origin: Literal["ai", "manual"]
+

@@ -303,3 +303,4 @@ def test_get_missing_question_returns_404(host_client, db_session: Session) -> N
     response = host_client.get("/api/questions/9999")
 
     assert response.status_code == 404
+

@@ -91,3 +91,4 @@ def test_rejects_non_positive_time_limit():
             correct_index=0,
             time_limit=0,
         )
+

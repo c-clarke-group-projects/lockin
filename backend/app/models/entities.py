@@ -249,3 +249,4 @@ class Flag(Base):
     session: Mapped[QuizSession] = relationship(back_populates="flags")
     question: Mapped[Question] = relationship(back_populates="flags")
     participant: Mapped[Participant] = relationship(back_populates="flags")
+

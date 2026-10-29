@@ -30,3 +30,4 @@ class QuizDetailResponse(BaseModel):
     title: str
     created_at: datetime
     questions: list[QuestionResponse]
+

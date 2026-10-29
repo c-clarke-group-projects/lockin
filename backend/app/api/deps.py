@@ -6,3 +6,4 @@ def current_host_id() -> int:
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Authentication is required.",
     )
+
