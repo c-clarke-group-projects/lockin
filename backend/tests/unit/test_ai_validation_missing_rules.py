@@ -48,7 +48,7 @@ def test_duplicate_options_rejected():
 
 @pytest.mark.xfail(strict=True, reason=NOT_CHECKED)
 def test_empty_question_text_rejected():
-    ok, _ = validate_question(make_question(question=""), PAGE_TEXT)
+    ok, _ = validate_question(make_question(text=""), PAGE_TEXT)
     assert ok is False
 
 
