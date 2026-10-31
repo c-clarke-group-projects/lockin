@@ -5,3 +5,4 @@
 # Expected from the proposal: fastapi, uvicorn, sqlalchemy, alembic, psycopg, redis,
 # pdfplumber, qrcode, pydantic, python-jose or an equivalent for tokens, passlib for
 # hashing, httpx, pytest.
+pytest==9.2.0
