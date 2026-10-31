@@ -10,7 +10,7 @@ PAGE_TEXT = "Photosynthesis happens in the chloroplast. It turns light into suga
 
 def make_question(**changes):
     question = {
-        "question": "Where does photosynthesis happen?",
+        "text": "Where does photosynthesis happen?",
         "options": ["Nucleus", "Chloroplast", "Ribosome", "Vacuole"],
         "correct_index": 1,
         "source_snippet": "happens in the chloroplast",
