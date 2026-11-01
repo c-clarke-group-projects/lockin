@@ -1,7 +1,10 @@
-# Backend dependencies.
-# Empty until PB-01 in week 2. Add a package only when it is actually used, pin the
-# version, and say in the pull request why it is needed. Ask before adding anything paid.
-#
-# Expected from the proposal: fastapi, uvicorn, sqlalchemy, alembic, psycopg, redis,
-# pdfplumber, qrcode, pydantic, python-jose or an equivalent for tokens, passlib for
-# hashing, httpx, pytest.
+fastapi==0.115.12
+httpx==0.28.1
+pdfplumber>=0.11.0
+psycopg[binary]==3.2.6
+pydantic>=2.10.0
+pytest==8.3.5
+python-multipart>=0.0.20
+requests>=2.31.0
+SQLAlchemy==2.0.40
+uvicorn==0.34.0
