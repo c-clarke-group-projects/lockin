@@ -3,10 +3,10 @@
 Source: WBS 2.2.2, Jira SCRUM-17. Week 1 deliverable. Owner Keshan.
 
 Status: version 2, proposed. To be agreed in the weekly meeting on 2026-10-26 with the
-frontend owners who build against it: 0071 (shared WebSocket client, 10.7, and answer
-screen), Tharindu (join page, big screen lobby, leaderboard view) and Dulanjana (big screen
-reveal, host live controls). Section 8 lists what changed from version 1 and the 3 points
-that need a decision recorded in `PLAN.md`.
+frontend owners who build against it: Keshan (shared WebSocket client, 10.7, from
+2026-11-01), 0071 and Keshan (answer screen), Tharindu (join page, big screen lobby,
+leaderboard view) and Dulanjana (big screen reveal, host live controls). Section 8 lists
+what changed from version 1 and the 3 points that need a decision recorded in `PLAN.md`.
 
 Backend and frontend are built in parallel from week 2 against this list, so it is the
 contract between them. Change it only by pull request, and tell both sides before merging.
