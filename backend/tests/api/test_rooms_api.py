@@ -34,15 +34,16 @@ def override_get_db():
         db.close()
 
 
-app.dependency_overrides[get_db] = override_get_db
 client = TestClient(app)
 
 
 @pytest.fixture(autouse=True)
-def clean_db():
+def setup_and_teardown_db():
+    app.dependency_overrides[get_db] = override_get_db
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     yield
+    app.dependency_overrides.clear()
 
 
 def create_test_host(email="host1@lockin.edu") -> Host:
