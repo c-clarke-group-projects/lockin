@@ -363,4 +363,100 @@ describe('Participant Join Page (SCRUM-58)', () => {
       expect(screen.getByRole('button', { name: /Join Room/i })).toBeInTheDocument();
     });
   });
+
+  it('17. handles backend room_closed error response', async () => {
+    renderJoinPage();
+    fireEvent.change(screen.getByLabelText(/6 Digit Room Code/i), { target: { value: '123456' } });
+    fireEvent.change(screen.getByLabelText(/Display Name/i), { target: { value: 'Saman' } });
+    fireEvent.click(screen.getByRole('button', { name: /Join Room/i }));
+
+    await waitFor(() => {
+      expect(mockClient.connectCalled).toBe(true);
+    });
+
+    mockClient.simulateMessage({
+      type: 'error',
+      session_id: null,
+      data: {
+        code: 'room_closed',
+        message: 'The session has ended',
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(/This quiz session has already ended/i);
+    });
+  });
+
+  it('18. handles backend room_full error response', async () => {
+    renderJoinPage();
+    fireEvent.change(screen.getByLabelText(/6 Digit Room Code/i), { target: { value: '123456' } });
+    fireEvent.change(screen.getByLabelText(/Display Name/i), { target: { value: 'Saman' } });
+    fireEvent.click(screen.getByRole('button', { name: /Join Room/i }));
+
+    await waitFor(() => {
+      expect(mockClient.connectCalled).toBe(true);
+    });
+
+    mockClient.simulateMessage({
+      type: 'error',
+      session_id: null,
+      data: {
+        code: 'room_full',
+        message: 'The room is full',
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(/This room is currently full/i);
+    });
+  });
+
+  it('19. handles backend wrong_phase error response', async () => {
+    renderJoinPage();
+    fireEvent.change(screen.getByLabelText(/6 Digit Room Code/i), { target: { value: '123456' } });
+    fireEvent.change(screen.getByLabelText(/Display Name/i), { target: { value: 'Saman' } });
+    fireEvent.click(screen.getByRole('button', { name: /Join Room/i }));
+
+    await waitFor(() => {
+      expect(mockClient.connectCalled).toBe(true);
+    });
+
+    mockClient.simulateMessage({
+      type: 'error',
+      session_id: null,
+      data: {
+        code: 'wrong_phase',
+        message: 'Quiz already in progress',
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(/The quiz has already started/i);
+    });
+  });
+
+  it('20. handles backend name_invalid error response', async () => {
+    renderJoinPage();
+    fireEvent.change(screen.getByLabelText(/6 Digit Room Code/i), { target: { value: '123456' } });
+    fireEvent.change(screen.getByLabelText(/Display Name/i), { target: { value: 'Saman' } });
+    fireEvent.click(screen.getByRole('button', { name: /Join Room/i }));
+
+    await waitFor(() => {
+      expect(mockClient.connectCalled).toBe(true);
+    });
+
+    mockClient.simulateMessage({
+      type: 'error',
+      session_id: null,
+      data: {
+        code: 'name_invalid',
+        message: 'Display name is invalid',
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(/Display name must be 1 to 20 characters/i);
+    });
+  });
 });
