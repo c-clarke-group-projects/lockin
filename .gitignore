@@ -37,6 +37,7 @@ storage/
 exports/
 *.sqlite3
 *.db
+docs/team/*
 
 # Logs
 logs/

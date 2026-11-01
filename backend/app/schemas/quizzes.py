@@ -4,6 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator
 
 
+
 class QuizCreate(BaseModel):
     title: str = Field(min_length=1)
 
@@ -22,14 +23,6 @@ class QuizListItem(BaseModel):
     created_at: datetime
     question_count: int
 
-
-class QuestionResponse(BaseModel):
-    text: str
-    options: tuple[str, str, str, str]
-    correct_index: int
-    time_limit: int
-    source_snippet: str | None
-    origin: Literal["ai", "manual"]
 
 
 class QuizDetailResponse(BaseModel):

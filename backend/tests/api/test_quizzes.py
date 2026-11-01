@@ -90,11 +90,13 @@ def test_open_quiz_returns_questions(host_client, db_session: Session) -> None:
     assert response.status_code == 200
     assert response.json()["questions"] == [
         {
+
             "text": "What is 2 + 2?",
             "options": ["3", "4", "5", "6"],
             "correct_index": 1,
             "time_limit": 20,
             "source_snippet": "2 + 2 = 4",
+
             "origin": "manual",
         }
     ]
@@ -189,3 +191,4 @@ def test_create_quiz_creates_title_for_authenticated_host(
     assert response.status_code == 201
     assert response.json()["title"] == "New quiz"
     assert response.json()["question_count"] == 0
+

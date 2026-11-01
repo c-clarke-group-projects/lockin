@@ -6,9 +6,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.api.deps import current_host_id
-from app.api.quizzes import router as quizzes_router
-from app.db.base import Base
-from app.db.session import get_db
+
 from app.models import entities
 
 HOST_ID = 1
@@ -43,10 +41,7 @@ def db_session() -> Session:
 
 @pytest.fixture
 def app(db_session: Session) -> FastAPI:
-    test_app = FastAPI()
-    test_app.include_router(quizzes_router, prefix="/api/quizzes")
-    test_app.dependency_overrides[get_db] = lambda: db_session
-    return test_app
+
 
 
 @pytest.fixture

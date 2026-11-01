@@ -52,12 +52,20 @@ The MVP is a web app that works in a phone browser.
 
 | Name | Main area of work |
 |---|---|
-|  | Backend: live rooms, WebSockets, scoring, deployment, code review |
-|  | Backend: PDF extraction, AI question generation, gap report |
-|  | Backend: database, login, questions API, challenge flags |
-|  | Frontend: host login, dashboard, question review, reports |
-|  | Frontend: participant join and answer screens, host big screen |
-|  | Testing, test plan, user guide, final report |
+| Keshan | Scrum master. Live room core: lobby, question broadcast, reconnect, deployment. Leads Rooms and live play |
+| Isiwara | PDF to questions: page text, AI interface, retry and backoff, validation. Leads AI question generation |
+| Sasmitha | Stored data: upload API, skipped pages, question editing, flag and void. Leads PDF upload and Questions API |
+| Nihansa | Host side: login API, token check, gap report backend, final demo. Leads Host accounts and Host screens |
+| Dulanjana | Running the live room: big screen reveal, phone and slow network test, trial, feedback. Leads Challenge and gap report, Participant and big screen |
+| Janath | Quality on real devices: scoring tests, full game test, load test, final report. Leads Testing and Release |
+| Vishmi | Host screens: login and register, dashboard and upload, question review, user guide |
+| Lakmal Perera | Question import end to end: manual add API, CSV import API, CSV page, flagged list |
+| Tharindu | Room and big screen: room code and QR, join page, big screen lobby, leaderboard view |
+| 0071 | Answer to result: answer screen, scoring, leaderboard, results page |
+| Helanga | Logs and automated tests: AI logging, validation tests, API tests, log review |
+
+Team grew from 6 to 11 at the start of week 2. Per task owners are in
+`docs/gantt_assignments.html` and in Jira.
 
 ## 4. Timeline, 6 weeks
 
@@ -138,4 +146,4 @@ lasting technical effect also get a file in `docs/decisions`.
 |---|---|---|---|---|
 | 2026-10-10 | Repository structure is 1 repository with `backend` and `frontend` folders, documentation in `docs`, plan at the root | Keshan | Matches the proposal and the week 1 work package 2.1 | ADR-0001 |
 | 2026-10-10 | No AI attribution of any kind in commits, pull requests, documentation or code | Keshan | The work is recorded under the team member who submits it | `CLAUDE.md` section 1 |
-| 2026-10-26 | Proposed: reject quiz deletion with 409 when any session exists; otherwise delete the quiz and its questions | Team confirmation pending | Prevent session results from being removed silently; proposed for SCRUM-87 | D7, proposed |
+

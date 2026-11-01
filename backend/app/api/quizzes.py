@@ -1,18 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+
 from sqlalchemy.orm import Session
 
 from app.api.deps import current_host_id
 from app.db.session import get_db
+
 from app.schemas.quizzes import (
     QuizCreate,
     QuizDetailResponse,
     QuizListItem,
-    QuestionResponse,
-)
-from app.services import quiz_service
+
 from app.services.quiz_service import QuizHasSessionsError
 
 router = APIRouter()
+
 
 
 @router.get("", response_model=list[QuizListItem])
@@ -51,11 +51,13 @@ def get_quiz(
         created_at=quiz.created_at,
         questions=[
             QuestionResponse(
+
                 text=question.text,
                 options=question.options,
                 correct_index=question.correct_index,
                 time_limit=question.time_limit,
                 source_snippet=question.source_snippet,
+
                 origin=question.origin,
             )
             for question in quiz.questions
