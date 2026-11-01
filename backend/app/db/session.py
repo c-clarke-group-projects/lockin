@@ -1,24 +1,73 @@
+import logging
+import os
+from functools import lru_cache
 from typing import Generator
+
 from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker, Session
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import get_settings
+from app.db.base import Base
 
-settings = get_settings()
+logger = logging.getLogger(__name__)
 
-db_url = settings.database_url
-# Normalise standard postgresql:// to postgresql+psycopg:// when using psycopg v3
-if db_url.startswith("postgresql://"):
-    db_url = db_url.replace("postgresql://", "postgresql+psycopg://", 1)
 
-connect_args = {}
-if db_url.startswith("sqlite"):
-    connect_args = {"check_same_thread": False}
+def _normalize_db_url(url: str) -> str:
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+psycopg://", 1)
+    return url
 
-engine = create_engine(db_url, connect_args=connect_args)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-Base = declarative_base()
+@lru_cache(maxsize=1)
+def get_engine() -> Engine:
+    database_url = os.environ.get("DATABASE_URL")
+    if not database_url:
+        try:
+            settings = get_settings()
+            database_url = settings.database_url
+        except Exception:
+            database_url = None
+
+    if not database_url:
+        logger.error("DATABASE_URL environment variable is not set")
+        raise RuntimeError("DATABASE_URL must be set before using the database.")
+
+    normalized_url = _normalize_db_url(database_url)
+    connect_args = {}
+    if normalized_url.startswith("postgresql"):
+        connect_args = {"connect_timeout": 5}
+    elif normalized_url.startswith("sqlite"):
+        connect_args = {"check_same_thread": False}
+
+    return create_engine(
+        normalized_url,
+        connect_args=connect_args,
+        pool_pre_ping=True,
+    )
+
+
+class _SessionLocalProxy:
+    def __call__(self, *args, **kwargs) -> Session:
+        session_factory = sessionmaker(
+            bind=get_engine(),
+            autocommit=False,
+            autoflush=False,
+            expire_on_commit=False,
+        )
+        return session_factory(*args, **kwargs)
+
+    def __getattr__(self, item):
+        session_factory = sessionmaker(
+            bind=get_engine(),
+            autocommit=False,
+            autoflush=False,
+            expire_on_commit=False,
+        )
+        return getattr(session_factory, item)
+
+
+SessionLocal = _SessionLocalProxy()
 
 
 def get_db() -> Generator[Session, None, None]:
@@ -29,3 +78,11 @@ def get_db() -> Generator[Session, None, None]:
     finally:
         db.close()
 
+
+def __getattr__(name: str):
+    if name == "engine":
+        return get_engine()
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
+
+
+__all__ = ["Base", "get_engine", "get_db", "SessionLocal"]

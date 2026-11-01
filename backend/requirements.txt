@@ -1,27 +1,31 @@
 # Backend dependencies for Lockin platform.
-# Pinned versions added for PB-01, PB-02, and PB-14.
 
 # Web framework and ASGI server for HTTP API and WebSockets
-fastapi==0.162.0
-uvicorn==0.54.0
+fastapi>=0.115.12
+uvicorn>=0.34.0
+python-multipart>=0.0.20
 
 # Data validation and environment settings
-pydantic==2.14.1
-python-dotenv==1.2.4
+pydantic>=2.10.0
+python-dotenv>=1.0.0
 
 # Database connection and ORM for PostgreSQL tables
-sqlalchemy==2.1.6
-psycopg==3.3.6
+SQLAlchemy>=2.0.40
+psycopg[binary]>=3.2.6
 
-# Local QR code generation with Pillow image backend (PB-14)
-qrcode==8.2
-pillow==12.3.0
+# PDF and CSV extraction services
+pdfplumber>=0.11.0
+requests>=2.31.0
 
-# Host authentication and JWT token handling (PB-02, PB-14)
-pyjwt==2.15.1
-cryptography==50.0.2
+# Local QR code generation with Pillow image backend
+qrcode>=8.0
+pillow>=10.0.0
+
+# Host authentication and JWT token handling
+pyjwt>=2.8.0
+cryptography>=42.0.0
 
 # Test runner and HTTP test client
-pytest==9.2.0
-pytest-asyncio==1.4.1
-httpx==0.28.1
+pytest>=8.3.5
+pytest-asyncio>=0.23.0
+httpx>=0.28.1

@@ -1,24 +1,26 @@
-from app.models.models import (
+from app.models.entities import (
+    Answer,
+    Flag,
     Host,
     Material,
     MaterialPage,
-    Quiz,
-    Question,
-    Session,
     Participant,
-    Answer,
-    Flag,
+    Question,
+    Quiz,
+    QuizSession,
 )
 
+Session = QuizSession
+
 __all__ = [
+    "Answer",
+    "Flag",
     "Host",
     "Material",
     "MaterialPage",
-    "Quiz",
-    "Question",
-    "Session",
     "Participant",
-    "Answer",
-    "Flag",
+    "Question",
+    "Quiz",
+    "QuizSession",
+    "Session",
 ]
-
