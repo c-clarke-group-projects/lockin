@@ -53,9 +53,23 @@ nowhere else.
 
 ## 6. Backend, from week 2
 
-Create a virtual environment inside `backend`, install the dependencies from
-`backend/requirements.txt`, run the database migrations, then start the development server.
-The exact commands are added to this section with the first backend pull request, PB-01.
+From `backend`, create a virtual environment, install the pinned dependencies, initialise
+the database, and start the development server:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+python -m app.db.init_db
+uvicorn app.main:app --reload
+```
+
+`DATABASE_URL` must be set in `.env` before the database is initialised. Run the focused
+API tests from `backend` with:
+
+```powershell
+pytest tests/api/test_quizzes.py
+```
 
 ## 7. Frontend, from week 2
 

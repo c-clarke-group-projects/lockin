@@ -3,7 +3,6 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
-from app.schemas.questions import QuestionResponse
 
 
 class QuizCreate(BaseModel):
@@ -25,9 +24,9 @@ class QuizListItem(BaseModel):
     question_count: int
 
 
+
 class QuizDetailResponse(BaseModel):
     id: int
     title: str
     created_at: datetime
     questions: list[QuestionResponse]
-
