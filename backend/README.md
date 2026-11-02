@@ -1,11 +1,12 @@
 # Backend
 
-FastAPI service. Serves the HTTP API and the WebSocket rooms from 1 application.
-PostgreSQL for stored data, Redis for live room state.
+FastAPI service. Serves the HTTP API and WebSocket rooms from 1 application.
+PostgreSQL stores data, Redis holds live room state.
 
-No application code yet. The folders exist so that 3 backend members can work in parallel
-from week 2 without colliding. Design is in `docs/ARCHITECTURE.md`, `docs/DATA_MODEL.md`,
-`docs/WEBSOCKET_PROTOCOL.md`, `docs/AI_PIPELINE.md` and `docs/SCORING.md`.
+The quiz list API is implemented in `app/api/quizzes.py`. The authentication dependency
+currently returns 401 until host login is integrated. Design is in
+`docs/ARCHITECTURE.md`, `docs/DATA_MODEL.md`, `docs/WEBSOCKET_PROTOCOL.md`,
+`docs/AI_PIPELINE.md` and `docs/SCORING.md`.
 
 ## What belongs where
 
@@ -45,5 +46,20 @@ The rule that matters: a route handler reads like a short list of calls into
 
 ## Running it
 
-See `docs/SETUP.md`. The exact commands are added there with the first backend pull
-request, PB-01.
+From this folder, install the dependencies, initialise the local database, and start the
+API:
+
+```powershell
+python -m pip install -r requirements.txt
+python -m app.db.init_db
+uvicorn app.main:app --reload
+```
+
+`DATABASE_URL` must be set before initialising the database or using a database-backed
+route. The API test suite uses an in-memory SQLite database and does not use this URL:
+
+```powershell
+pytest tests/api/test_quizzes.py
+```
+
+See `docs/SETUP.md` for local environment setup.

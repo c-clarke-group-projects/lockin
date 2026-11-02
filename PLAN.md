@@ -134,6 +134,7 @@ in the decision log below.
 | D4 | Set the retention period for uploaded files and session results | Before the trial |  |
 | D5 | Choose a product name and check it is not already in use | Week 5 | Team |
 | D6 | Find trial teachers and 1 study group | Week 5 |  |
+| D7 | Confirm quiz deletion behaviour when a quiz has sessions | Before quiz deletion is merged | Team |
 
 ## 10. Decision log
 
