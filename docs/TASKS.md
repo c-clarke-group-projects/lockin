@@ -203,7 +203,7 @@ Stories PB-31, PB-33. Deliverable: a live MVP and trial feedback.
 
 | WBS | Task | Why it matters | Done check |
 |---|---|---|---|
-| 6.1.1 | Deploy to hosting, only after the cost is approved | Nothing is purchased without approval. Decision D3 | Deployed with all secrets from environment variables |
+| 6.1.1 | Local network trial setup: the app runs on 1 laptop and phones on the same network join it. Hosted deployment is deferred, see the `PLAN.md` decision log 2026-11-01 | The trial needs no paid hosting. Decision D3 is not raised for now | 1 full quiz played by phones on the same network, setup steps in `docs/SETUP.md`, all secrets from environment variables |
 | 6.1.2 | Trial session with 1 class and 1 study group | Both user types from the proposal, tested with real people | 1 session each, run and observed |
 | 6.1.3 | Collect feedback from the trial | Decides what goes into version 2 | Written feedback from both sessions |
 

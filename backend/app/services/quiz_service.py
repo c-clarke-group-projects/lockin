@@ -53,4 +53,3 @@ def delete_quiz(db: Session, host_id: int, quiz_id: int) -> bool:
     db.delete(quiz)
     db.commit()
     return True
-
