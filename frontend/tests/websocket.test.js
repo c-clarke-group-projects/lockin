@@ -121,6 +121,25 @@ describe('QuizWebSocketClient', () => {
     expect(errorSpy).toHaveBeenCalled();
   });
 
+  it('sends host_join message with screen and token', async () => {
+    const client = new QuizWebSocketClient();
+    await client.connect();
+
+    client.hostJoin('big_screen', 42, 'secret-token', '012345');
+
+    expect(mockSocket.send).toHaveBeenCalledTimes(1);
+    const sentData = JSON.parse(mockSocket.send.mock.calls[0][0]);
+    expect(sentData).toEqual({
+      type: 'host_join',
+      session_id: 42,
+      token: 'secret-token',
+      data: {
+        screen: 'big_screen',
+        join_code: '012345',
+      },
+    });
+  });
+
   it('disconnects socket and clears callbacks', async () => {
     const client = new QuizWebSocketClient();
     await client.connect();

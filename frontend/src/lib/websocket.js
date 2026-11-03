@@ -66,7 +66,7 @@ export class QuizWebSocketClient {
     });
   }
 
-  send(type, data = {}, sessionId = null) {
+  send(type, data = {}, sessionId = null, token = null) {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
       throw new Error('WebSocket is not connected');
     }
@@ -75,6 +75,9 @@ export class QuizWebSocketClient {
       session_id: sessionId,
       data,
     };
+    if (token) {
+      message.token = token;
+    }
     this.socket.send(JSON.stringify(message));
   }
 
@@ -90,6 +93,14 @@ export class QuizWebSocketClient {
       join_code: joinCode,
       display_name: displayName,
     }, null);
+  }
+
+  hostJoin(screen = 'big_screen', sessionId = null, token = null, joinCode = null) {
+    const data = { screen };
+    if (joinCode) {
+      data.join_code = joinCode;
+    }
+    this.send('host_join', data, sessionId, token);
   }
 
   leave(sessionId = null) {
