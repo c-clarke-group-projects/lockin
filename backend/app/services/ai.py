@@ -4,6 +4,8 @@ import time
 import requests
 from typing import Dict, Any, List
 
+from app.services import ai_logging as ai_log
+
 AI_PROVIDER = os.getenv("AI_PROVIDER", "gemini").lower()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
@@ -57,11 +59,16 @@ Source Text (Page {page_number}):
 """
 
 
-def call_ai_provider_with_retry(prompt: str) -> str:
+def call_ai_provider_with_retry(prompt: str, source_label: str = "") -> str:
     """
     Calls AI provider (Gemini or Ollama) with timeout, retry limit, and exponential backoff.
     """
+    model = GEMINI_MODEL if AI_PROVIDER == "gemini" else OLLAMA_MODEL
     for attempt in range(AI_MAX_RETRIES):
+        started = time.monotonic()
+        ai_log.log_attempt(
+            attempt + 1, AI_MAX_RETRIES, AI_PROVIDER, model, prompt, source_label
+        )
         try:
             if AI_PROVIDER == "gemini":
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
@@ -69,7 +76,9 @@ def call_ai_provider_with_retry(prompt: str) -> str:
                 response = requests.post(url, json=payload, timeout=AI_TIMEOUT_SECONDS)
                 response.raise_for_status()
                 data = response.json()
-                return data["candidates"][0]["content"]["parts"][0]["text"]
+                text = data["candidates"][0]["content"]["parts"][0]["text"]
+                ai_log.log_response(attempt + 1, started, text)
+                return text
             
             elif AI_PROVIDER == "ollama":
                 url = f"{OLLAMA_BASE_URL}/api/generate"
@@ -80,12 +89,17 @@ def call_ai_provider_with_retry(prompt: str) -> str:
                 }
                 response = requests.post(url, json=payload, timeout=AI_TIMEOUT_SECONDS)
                 response.raise_for_status()
-                return response.json().get("response", "")
+                text = response.json().get("response", "")
+                ai_log.log_response(attempt + 1, started, text)
+                return text
             
             else:
                 raise ValueError(f"Unsupported AI provider: {AI_PROVIDER}")
 
         except Exception as e:
+            ai_log.log_attempt_failed(
+                attempt + 1, AI_MAX_RETRIES, e, attempt < AI_MAX_RETRIES - 1
+            )
             if attempt == AI_MAX_RETRIES - 1:
                 raise e
             sleep_time = AI_RETRY_BACKOFF_SECONDS ** attempt

@@ -1,7 +1,9 @@
 import json
 from typing import List, Dict, Any, Tuple
 
-def validate_question(question: Dict[str, Any], page_text: str) -> Tuple[bool, str]:
+from app.services import ai_logging as ai_log
+
+def _check_question(question: Dict[str, Any], page_text: str) -> Tuple[bool, str]:
     """
     Validates:
     1. Exactly 4 options in options list.
@@ -23,6 +25,14 @@ def validate_question(question: Dict[str, Any], page_text: str) -> Tuple[bool, s
     return True, "Valid"
 
 
+def validate_question(question: Dict[str, Any], page_text: str) -> Tuple[bool, str]:
+    """Runs the validation rules and logs the reason when a question is rejected."""
+    is_valid, reason = _check_question(question, page_text)
+    if not is_valid:
+        ai_log.log_question_rejected(reason, question)
+    return is_valid, reason
+
+
 def parse_and_validate_ai_response(raw_response: str, page_text: str) -> List[Dict[str, Any]]:
     """
     Parses raw AI output text into JSON array and filters out rejected questions.
@@ -41,16 +51,21 @@ def parse_and_validate_ai_response(raw_response: str, page_text: str) -> List[Di
     try:
         questions = json.loads(cleaned_text)
     except json.JSONDecodeError:
+        ai_log.log_response_skipped("response is not valid JSON", raw_response)
         return []
 
     if not isinstance(questions, list):
+        ai_log.log_response_skipped("JSON is not a list of questions", raw_response)
         return []
 
     valid_questions = []
-    for q in questions:
+    for index, q in enumerate(questions):
         if isinstance(q, dict):
             is_valid, _ = validate_question(q, page_text)
             if is_valid:
                 valid_questions.append(q)
+        else:
+            ai_log.log_item_skipped(index, q)
 
+    ai_log.log_validation_summary(len(questions), len(valid_questions))
     return valid_questions
