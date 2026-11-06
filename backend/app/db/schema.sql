@@ -92,5 +92,14 @@ CREATE TABLE flags (
     question_id BIGINT NOT NULL REFERENCES questions(id),
     participant_id BIGINT NOT NULL REFERENCES participants(id),
     reason TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (participant_id, question_id)
+);
+CREATE TABLE session_question_voids (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    session_id BIGINT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    question_id BIGINT NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
+    voided_by BIGINT NOT NULL REFERENCES hosts(id),
+    voided_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (session_id, question_id)
 );
