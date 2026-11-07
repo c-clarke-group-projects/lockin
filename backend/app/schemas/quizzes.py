@@ -5,7 +5,6 @@ from pydantic import BaseModel, Field, field_validator
 from app.schemas.questions import QuestionResponse
 
 
-
 class QuizCreate(BaseModel):
     title: str = Field(min_length=1)
 
