@@ -1,31 +1,41 @@
-# Backend dependencies for Lockin platform.
+# Backend dependencies for Lockin platform
 
-# Web framework and ASGI server for HTTP API and WebSockets
+# Web framework and ASGI server
 fastapi>=0.115.12
+starlette>=0.38.0
 uvicorn>=0.34.0
+websockets>=13.0
 python-multipart>=0.0.20
+watchfiles>=1.0.0
+httptools>=0.6.0
 
-# Data validation and environment settings
+# Data validation and settings
 pydantic>=2.10.0
+pydantic-core>=2.27.0
 python-dotenv>=1.0.0
+email-validator>=2.0.0
+PyYAML>=6.0.0
 
-# Database connection and ORM for PostgreSQL tables
-SQLAlchemy>=2.0.40
-psycopg[binary]>=3.2.6
+# Database connection and ORM
+SQLAlchemy>=2.0.36
+psycopg[binary]>=3.2.0
+psycopg2-binary>=2.9.9
 
-# PDF and CSV extraction services
+# Document parsing and utilities
 pdfplumber>=0.11.0
 requests>=2.31.0
 
-# Local QR code generation with Pillow image backend
+# QR code generation
 qrcode>=8.0
 pillow>=10.0.0
 
-# Host authentication and JWT token handling
-pyjwt>=2.8.0
+# Security and authentication
+bcrypt>=4.0.0
+PyJWT>=2.8.0
 cryptography>=42.0.0
 
-# Test runner and HTTP test client
-pytest>=8.3.5
+# Testing and development
+pytest>=8.3.0
 pytest-asyncio>=0.23.0
-httpx>=0.28.1
+httpx>=0.28.0
+anyio>=4.5.0

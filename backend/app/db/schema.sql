@@ -1,3 +1,4 @@
+
 CREATE TABLE hosts (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -30,20 +31,17 @@ CREATE TABLE quizzes (
 
 CREATE TABLE questions (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    quiz_id BIGINT NOT NULL REFERENCES quizzes(id),
+    quiz_id BIGINT NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
     text TEXT NOT NULL,
-    options JSONB NOT NULL
-        CHECK (
-            jsonb_typeof(options) = 'array'
-            AND jsonb_array_length(options) = 4
-        ),
-    correct_index SMALLINT NOT NULL
-        CHECK (correct_index BETWEEN 0 AND 3),
-    time_limit INTEGER NOT NULL CHECK (time_limit > 0),
+    options JSONB NOT NULL CHECK (
+        jsonb_typeof(options) = 'array'
+        AND jsonb_array_length(options) = 4
+    ),
+    correct_index SMALLINT NOT NULL CHECK (correct_index BETWEEN 0 AND 3),
+    time_limit INTEGER NOT NULL DEFAULT 30 CHECK (time_limit > 0),
     source_page_id BIGINT REFERENCES material_pages(id),
     source_snippet TEXT,
-    origin VARCHAR(10) NOT NULL
-        CHECK (origin IN ('ai', 'manual')),
+    origin VARCHAR(10) NOT NULL CHECK (origin IN ('ai', 'manual')),
     CHECK (
         origin = 'manual'
         OR (
@@ -57,8 +55,7 @@ CREATE TABLE questions (
 CREATE TABLE sessions (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     quiz_id BIGINT NOT NULL REFERENCES quizzes(id),
-    join_code CHAR(6) NOT NULL
-        CHECK (join_code ~ '^[0-9]{6}$'),
+    join_code CHAR(6) NOT NULL CHECK (join_code ~ '^[0-9]{6}$'),
     status VARCHAR(10) NOT NULL DEFAULT 'waiting'
         CHECK (status IN ('waiting', 'running', 'ended')),
     started_at TIMESTAMPTZ,
@@ -95,5 +92,14 @@ CREATE TABLE flags (
     question_id BIGINT NOT NULL REFERENCES questions(id),
     participant_id BIGINT NOT NULL REFERENCES participants(id),
     reason TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (participant_id, question_id)
+);
+CREATE TABLE session_question_voids (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    session_id BIGINT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    question_id BIGINT NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
+    voided_by BIGINT NOT NULL REFERENCES hosts(id),
+    voided_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (session_id, question_id)
 );

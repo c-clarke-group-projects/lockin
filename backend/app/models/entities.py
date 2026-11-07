@@ -125,7 +125,8 @@ class Question(Base):
     text: Mapped[str] = mapped_column(Text, nullable=False)
     options: Mapped[list[str]] = mapped_column(OPTIONS_TYPE, nullable=False)
     correct_index: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    time_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
+    time_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=20)
+
     source_page_id: Mapped[int | None] = mapped_column(
         ForeignKey("material_pages.id"),
     )
@@ -262,3 +263,4 @@ class Flag(Base):
 
 # Backward-compatibility alias
 Session = QuizSession
+

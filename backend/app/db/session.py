@@ -1,7 +1,18 @@
 import logging
 import os
 from functools import lru_cache
+from pathlib import Path
 from typing import Generator
+
+try:
+    from dotenv import find_dotenv, load_dotenv
+
+    load_dotenv(find_dotenv(usecwd=True))
+    _root_env = Path(__file__).resolve().parents[2] / ".env"
+    if _root_env.exists():
+        load_dotenv(_root_env)
+except ImportError:
+    pass
 
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
