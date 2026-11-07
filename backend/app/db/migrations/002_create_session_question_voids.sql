@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS session_question_voids (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    session_id BIGINT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    question_id BIGINT NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
+    voided_by BIGINT NOT NULL REFERENCES hosts(id),
+    voided_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (session_id, question_id)
+);
