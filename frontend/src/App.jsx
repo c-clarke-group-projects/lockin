@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { JoinPage } from './pages/JoinPage';
 import { BigScreenLobby } from './pages/BigScreenLobby';
+import { LeaderboardPage } from './pages/LeaderboardPage';
 
 export function App() {
   return (
@@ -12,6 +13,8 @@ export function App() {
         <Route path="/join/:code" element={<JoinPage />} />
         <Route path="/big-screen" element={<BigScreenLobby />} />
         <Route path="/big-screen/:code" element={<BigScreenLobby />} />
+        <Route path="/leaderboard" element={<LeaderboardPage />} />
+        <Route path="/leaderboard/:code" element={<LeaderboardPage />} />
         <Route path="*" element={<Navigate to="/join" replace />} />
       </Routes>
     </BrowserRouter>
