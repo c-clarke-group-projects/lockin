@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { QuizWebSocketClient } from '../lib/websocket';
 import { WaitingLobby } from '../components/WaitingLobby';
+import ParticipantReveal from '../views/participentReveal';
+import { Leaderboard } from '../components/Leaderboard';
 
 const ROOM_CODE_REGEX = /^\d{6}$/;
 const MAX_NAME_LENGTH = 20;
@@ -17,10 +19,13 @@ export function JoinPage({ clientOverride = null }) {
   const [errorMessage, setErrorMessage] = useState('');
   const [infoMessage, setInfoMessage] = useState('');
 
-  // Joined state
+  // Joined state & Live game phases
   const [joinedSession, setJoinedSession] = useState(null);
   const [lobbyParticipants, setLobbyParticipants] = useState([]);
   const [participantCount, setParticipantCount] = useState(0);
+  const [currentPhase, setCurrentPhase] = useState('lobby'); // 'lobby' | 'reveal' | 'leaderboard'
+  const [revealData, setRevealData] = useState(null);
+  const [leaderboardData, setLeaderboardData] = useState(null);
 
   const nameInputRef = useRef(null);
   const codeInputRef = useRef(null);
@@ -140,12 +145,19 @@ export function JoinPage({ clientOverride = null }) {
             roomCode: validated.code,
           });
         } else if (msg.type === 'lobby') {
+          setCurrentPhase('lobby');
           if (msg.data?.participants) {
             setLobbyParticipants(msg.data.participants);
           }
           if (typeof msg.data?.count === 'number') {
             setParticipantCount(msg.data.count);
           }
+        } else if (msg.type === 'reveal') {
+          setCurrentPhase('reveal');
+          setRevealData(msg.data);
+        } else if (msg.type === 'leaderboard' || msg.type === 'ended') {
+          setCurrentPhase('leaderboard');
+          setLeaderboardData(msg.data);
         } else if (msg.type === 'error') {
           if (timeoutTimerRef.current) {
             clearTimeout(timeoutTimerRef.current);
@@ -213,10 +225,48 @@ export function JoinPage({ clientOverride = null }) {
     setJoinedSession(null);
     setLobbyParticipants([]);
     setParticipantCount(0);
+    setCurrentPhase('lobby');
+    setRevealData(null);
+    setLeaderboardData(null);
     setIsJoining(false);
   };
 
   if (joinedSession) {
+    if (currentPhase === 'reveal' && revealData) {
+      return (
+        <div className="join-page-container">
+          <ParticipantReveal
+            questionData={revealData}
+            selectedOption={revealData.you?.chosen_index ?? null}
+            sessionId={joinedSession.sessionId}
+            participantId={joinedSession.participantId}
+            isRevealPhase={true}
+            wsClient={clientRef.current}
+          />
+        </div>
+      );
+    }
+
+    if (currentPhase === 'leaderboard' && leaderboardData) {
+      return (
+        <div className="join-page-container">
+          <Leaderboard
+            top={leaderboardData.top}
+            count={leaderboardData.count}
+            you={
+              leaderboardData.you || {
+                rank: null,
+                score: joinedSession.score,
+                display_name: joinedSession.displayName,
+              }
+            }
+            variant="mobile"
+            client={clientRef.current}
+          />
+        </div>
+      );
+    }
+
     return (
       <div className="join-page-container">
         <WaitingLobby

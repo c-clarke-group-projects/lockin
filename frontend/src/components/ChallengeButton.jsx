@@ -38,6 +38,7 @@ export function ChallengeButton({
   phase = 'reveal',
   isRevealPhase = true,
   wsClient = null,
+  submissionMethod = 'http', // 'http' (authoritative backend) | 'websocket'
   apiBaseUrl = getApiBaseUrl(),
   initialFlagged = false,
   onFlagSuccess = null,
@@ -141,9 +142,8 @@ export function ChallengeButton({
     setIsPending(true);
     setFeedback(null);
 
-    // 1. Send via WebSocket if client connected
-    let wsSent = false;
-    if (wsClient && wsClient.isOpen && typeof wsClient.send === 'function') {
+    // Ensure ONE authoritative submission mechanism only - never dispatch both HTTP and WebSocket
+    if (submissionMethod === 'websocket' && wsClient && wsClient.isOpen && typeof wsClient.send === 'function') {
       try {
         wsClient.send(
           'flag',
@@ -153,13 +153,18 @@ export function ChallengeButton({
           },
           sessionId ? Number(sessionId) : null
         );
-        wsSent = true;
       } catch (err) {
-        wsSent = false;
+        setIsPending(false);
+        setFeedback({
+          type: 'error',
+          message: 'Failed to send challenge over live connection.',
+        });
+        if (onFlagError) onFlagError(err);
       }
+      return;
     }
 
-    // 2. Submit via HTTP API (backend app/api/flags.py)
+    // Default authoritative submission mechanism: HTTP API (backend app/api/flags.py)
     try {
       const baseUrl = (apiBaseUrl || '').replace(/\/+$/, '');
       const url = `${baseUrl}/api/flags/`;
@@ -208,38 +213,23 @@ export function ChallengeButton({
       } else {
         const errorData = await response.json().catch(() => ({}));
         setIsPending(false);
-        // If WS already delivered or acked, do not treat as fatal
-        if (!wsSent) {
-          setFeedback({
-            type: 'error',
-            message: errorData.detail || 'Failed to submit challenge. Please try again.',
-          });
-          if (onFlagError) {
-            onFlagError(errorData);
-          }
-        } else {
-          setHasFlagged(true);
-          setFeedback({ type: 'success', message: 'Challenge submitted via live connection.' });
+        setFeedback({
+          type: 'error',
+          message: errorData.detail || 'Failed to submit challenge. Please try again.',
+        });
+        if (onFlagError) {
+          onFlagError(errorData);
         }
       }
     } catch (err) {
       if (!isMountedRef.current) return;
       setIsPending(false);
-      if (wsSent) {
-        // WebSocket dispatched successfully
-        setHasFlagged(true);
-        setFeedback({ type: 'success', message: 'Challenge sent via live connection.' });
-        if (typeof window !== 'undefined' && window.sessionStorage && storageKey) {
-          window.sessionStorage.setItem(storageKey, 'true');
-        }
-      } else {
-        setFeedback({
-          type: 'error',
-          message: 'Network error. Could not reach server.',
-        });
-        if (onFlagError) {
-          onFlagError(err);
-        }
+      setFeedback({
+        type: 'error',
+        message: 'Network error. Could not reach server.',
+      });
+      if (onFlagError) {
+        onFlagError(err);
       }
     }
   };

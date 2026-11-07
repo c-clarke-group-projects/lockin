@@ -250,12 +250,10 @@ describe('ChallengeButton Component (PB-23)', () => {
   });
 
   describe('WebSocket Integration & Reconnection', () => {
-    it('dispatches WebSocket flag message and handles ack response', async () => {
+    it('dispatches WebSocket flag message when submissionMethod is websocket', async () => {
       const mockClient = new MockQuizWebSocketClient();
-      global.fetch = vi.fn().mockResolvedValue({
-        status: 201,
-        json: async () => ({ message: 'ok' }),
-      });
+      const mockFetch = vi.fn();
+      global.fetch = mockFetch;
 
       render(
         <ChallengeButton
@@ -263,6 +261,7 @@ describe('ChallengeButton Component (PB-23)', () => {
           sessionId={2}
           participantId={9}
           wsClient={mockClient}
+          submissionMethod="websocket"
           apiBaseUrl="http://localhost:8000"
         />
       );
@@ -281,6 +280,9 @@ describe('ChallengeButton Component (PB-23)', () => {
         sessionId: 2,
       });
 
+      // Verify HTTP was NOT called (no duplicate submission!)
+      expect(mockFetch).not.toHaveBeenCalled();
+
       // Simulate server ack
       act(() => {
         mockClient.emitMessage({
@@ -291,6 +293,41 @@ describe('ChallengeButton Component (PB-23)', () => {
           },
         });
       });
+
+      await waitFor(() => {
+        expect(screen.getByText('Flagged')).toBeInTheDocument();
+      });
+    });
+
+    it('ensures single submission: does NOT send websocket flag when HTTP submission method is used', async () => {
+      const mockClient = new MockQuizWebSocketClient();
+      const mockFetch = vi.fn().mockResolvedValue({
+        status: 201,
+        json: async () => ({ message: 'ok', flag_id: 1, question_id: 22 }),
+      });
+      global.fetch = mockFetch;
+
+      render(
+        <ChallengeButton
+          questionId={22}
+          sessionId={2}
+          participantId={9}
+          wsClient={mockClient}
+          submissionMethod="http"
+          apiBaseUrl="http://localhost:8000"
+        />
+      );
+
+      const button = screen.getByRole('button', { name: /challenge this question/i });
+      await act(async () => {
+        fireEvent.click(button);
+      });
+
+      // Verify HTTP was called exactly once
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+
+      // Verify WebSocket was NOT sent (strictly preventing dual submissions)
+      expect(mockClient.sentMessages).toHaveLength(0);
 
       await waitFor(() => {
         expect(screen.getByText('Flagged')).toBeInTheDocument();
