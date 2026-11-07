@@ -1,7 +1,27 @@
 import React from 'react';
+import { ChallengeButton } from '../components/ChallengeButton';
 
-export default function ParticipantReveal({ questionData, selectedOption }) {
-  const { options, correct_index, source_page, source_snippet } = questionData;
+export default function ParticipantReveal({
+  questionData = {},
+  selectedOption,
+  sessionId = null,
+  participantId = null,
+  isRevealPhase = true,
+  wsClient = null,
+  onChallenge = null,
+  onFlagSuccess = null,
+  initialFlagged = false,
+}) {
+  const {
+    options = [],
+    correct_index,
+    source_page,
+    source_snippet,
+    question_id,
+    id,
+  } = questionData || {};
+
+  const currentQuestionId = question_id || id;
   const isCorrect = selectedOption === correct_index;
 
   return (
@@ -42,6 +62,21 @@ export default function ParticipantReveal({ questionData, selectedOption }) {
         <h4>📖 Source (Page {source_page})</h4>
         <p style={{ fontStyle: 'italic', color: '#333' }}>"{source_snippet}"</p>
       </div>
+
+      {/* Challenge / Flag Button (PB-23) */}
+      {currentQuestionId !== undefined && currentQuestionId !== null && isRevealPhase && (
+        <div style={{ marginTop: '24px' }}>
+          <ChallengeButton
+            questionId={currentQuestionId}
+            sessionId={sessionId}
+            participantId={participantId}
+            isRevealPhase={isRevealPhase}
+            wsClient={wsClient}
+            initialFlagged={initialFlagged}
+            onFlagSuccess={onFlagSuccess || onChallenge}
+          />
+        </div>
+      )}
     </div>
   );
 }
