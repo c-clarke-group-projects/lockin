@@ -1,5 +1,8 @@
 
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
+from app.services import quiz_service
+from app.schemas.questions import QuestionResponse
 
 from app.api.deps import current_host_id
 from app.db.session import get_db
@@ -8,6 +11,7 @@ from app.schemas.quizzes import (
     QuizCreate,
     QuizDetailResponse,
     QuizListItem,
+)
 
 from app.services.quiz_service import QuizHasSessionsError
 
@@ -32,7 +36,7 @@ def list_quizzes(
     ]
 
 
-@router.get("/{quiz_id}", response_model=QuizDetailResponse)
+@router.get("/{quiz_id}", response_model=QuizDetailResponse, response_model_exclude_none=True)
 def get_quiz(
     quiz_id: int,
     host_id: int = Depends(current_host_id),

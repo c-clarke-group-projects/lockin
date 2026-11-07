@@ -1,5 +1,16 @@
 
 import os
+from pathlib import Path
+
+try:
+    from dotenv import find_dotenv, load_dotenv
+
+    load_dotenv(find_dotenv(usecwd=True))
+    _root_env = Path(__file__).resolve().parents[2] / ".env"
+    if _root_env.exists():
+        load_dotenv(_root_env)
+except ImportError:
+    pass
 from functools import lru_cache
 from typing import Generator
 
