@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { JoinPage } from './pages/JoinPage';
 import { BigScreenLobby } from './pages/BigScreenLobby';
 import { LeaderboardPage } from './pages/LeaderboardPage';
+import { FlaggedQuestionsPage } from './pages/FlaggedQuestionsPage';
 
 export function App() {
   return (
@@ -15,6 +16,10 @@ export function App() {
         <Route path="/big-screen/:code" element={<BigScreenLobby />} />
         <Route path="/leaderboard" element={<LeaderboardPage />} />
         <Route path="/leaderboard/:code" element={<LeaderboardPage />} />
+        <Route
+          path="/host/sessions/:sessionId/flags"
+          element={<FlaggedQuestionsPage />}
+        />
         <Route path="*" element={<Navigate to="/join" replace />} />
       </Routes>
     </BrowserRouter>

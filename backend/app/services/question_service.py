@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.entities import Question, Quiz
-from app.schemas.questions import QuestionManualCreate
+from app.schemas.questions import QuestionManualCreate, QuestionUpdate
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +67,32 @@ def get_question(
     return db.scalar(statement)
 
 
+def update_question(
+    db: Session,
+    host_id: int,
+    question_id: int,
+    payload: QuestionUpdate,
+) -> Question | None:
+    question = get_question(db, host_id, question_id)
+    if question is None:
+        return None
+
+    question.text = payload.text
+    question.options = payload.options
+    question.correct_index = payload.correct_index
+    question.time_limit = payload.time_limit
+    db.commit()
+    db.refresh(question)
+
+    logger.info(
+        "Updated question %s in quiz %s by host %s",
+        question.id,
+        question.quiz_id,
+        host_id,
+    )
+    return question
+
+
 def list_questions(
     db: Session,
     host_id: int,
@@ -89,4 +115,3 @@ def list_questions(
         .order_by(Question.id)
     )
     return list(db.scalars(statement).all())
-

@@ -60,3 +60,27 @@ class QuestionResponse(BaseModel):
     source_page_id: int | None = None
     origin: Literal["ai", "manual"]
 
+
+class QuestionUpdate(BaseModel):
+    text: str = Field(min_length=1)
+    options: list[str] = Field(min_length=4, max_length=4)
+    correct_index: int = Field(ge=0, le=3)
+    time_limit: int = Field(default=30, gt=0)
+
+    @field_validator("text")
+    @classmethod
+    def validate_text(cls, value: str) -> str:
+        text = value.strip()
+        if not text:
+            raise ValueError("Question text must not be empty.")
+        return text
+
+    @field_validator("options")
+    @classmethod
+    def validate_options(cls, value: list[str]) -> list[str]:
+        if len(value) != 4:
+            raise ValueError("A question must have exactly 4 options.")
+        cleaned = [option.strip() for option in value]
+        if any(not option for option in cleaned):
+            raise ValueError("All 4 options must be non-empty.")
+        return cleaned

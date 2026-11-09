@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-from sqlalchemy import text
+from sqlalchemy import func, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -221,10 +221,33 @@ def get_session_flags(
         .order_by(Flag.created_at.desc())
         .all()
     )
+    question_flag_counts = (
+        db.query(Question, func.count(Flag.id).label("flag_count"))
+        .join(Flag, Flag.question_id == Question.id)
+        .filter(Flag.session_id == session_id)
+        .group_by(Question.id)
+        .order_by(func.count(Flag.id).desc(), Question.id.asc())
+        .all()
+    )
 
     return {
         "session_id": session_id,
         "total_flags": len(flagged_questions),
+        "flagged_questions": [
+            {
+                "question_id": question.id,
+                "quiz_id": question.quiz_id,
+                "question_text": question.text,
+                "options": question.options,
+                "correct_index": question.correct_index,
+                "time_limit": question.time_limit,
+                "source_page_id": question.source_page_id,
+                "source_snippet": question.source_snippet,
+                "origin": question.origin,
+                "flag_count": flag_count,
+            }
+            for question, flag_count in question_flag_counts
+        ],
         "flags": [
             {
                 "flag_id": flag.id,

@@ -32,13 +32,6 @@ class QuestionCreate(BaseModel):
     time_limit: int = Field(default=30, gt=0)
 
 
-class QuestionUpdate(BaseModel):
-    text: str = Field(min_length=1)
-    options: list[str] = Field(min_length=4, max_length=4)
-    correct_index: int = Field(ge=0, le=3)
-    time_limit: int = Field(default=30, gt=0)
-
-
 class RegenerateRequest(BaseModel):
     page_id: int
     count: int = Field(default=5, ge=1, le=30)
@@ -112,36 +105,6 @@ def create_question(quiz_id: int, data: QuestionCreate):
         ).fetchone()
 
         return {"message": "Question saved", "question_id": row[0]}
-
-
-@router.put("/questions/{question_id}")
-def update_question(question_id: int, data: QuestionUpdate):
-    check_question(data)
-
-    with get_db() as conn:
-        row = conn.execute(
-            """
-            UPDATE questions
-            SET text = %s,
-                options = %s,
-                correct_index = %s,
-                time_limit = %s
-            WHERE id = %s
-            RETURNING id
-            """,
-            (
-                data.text,
-                Jsonb(data.options),
-                data.correct_index,
-                data.time_limit,
-                question_id,
-            )
-        ).fetchone()
-
-        if not row:
-            raise HTTPException(404, "Question not found")
-
-        return {"message": "Question updated", "question_id": row[0]}
 
 
 @router.delete("/questions/{question_id}")

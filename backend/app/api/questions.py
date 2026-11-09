@@ -13,7 +13,11 @@ from sqlalchemy.orm import Session
 from app.api.deps import current_host_id
 from app.db.session import get_db
 from app.schemas.csv_import import CsvImportResponse
-from app.schemas.questions import QuestionManualCreate, QuestionResponse
+from app.schemas.questions import (
+    QuestionManualCreate,
+    QuestionResponse,
+    QuestionUpdate,
+)
 from app.services import csv_import, question_service
 
 router = APIRouter()
@@ -144,6 +148,39 @@ def get_question(
     db: Session = Depends(get_db),
 ) -> QuestionResponse:
     question = question_service.get_question(db, host_id, question_id)
+    if question is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Question not found.",
+        )
+
+    return QuestionResponse(
+        id=question.id,
+        quiz_id=question.quiz_id,
+        text=question.text,
+        options=question.options,
+        correct_index=question.correct_index,
+        time_limit=question.time_limit,
+        source_snippet=question.source_snippet,
+        source_note=question.source_snippet,
+        source_page_id=question.source_page_id,
+        origin=question.origin,
+    )
+
+
+@router.put("/{question_id}", response_model=QuestionResponse)
+def update_question(
+    question_id: int,
+    payload: QuestionUpdate,
+    host_id: int = Depends(current_host_id),
+    db: Session = Depends(get_db),
+) -> QuestionResponse:
+    question = question_service.update_question(
+        db,
+        host_id,
+        question_id,
+        payload,
+    )
     if question is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
