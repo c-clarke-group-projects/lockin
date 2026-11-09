@@ -4,6 +4,7 @@ import { QuizWebSocketClient } from '../lib/websocket';
 import { WaitingLobby } from '../components/WaitingLobby';
 import ParticipantReveal from '../views/participentReveal';
 import { Leaderboard } from '../components/Leaderboard';
+import { FinalResult } from '../components/FinalResult';
 
 const ROOM_CODE_REGEX = /^\d{6}$/;
 const MAX_NAME_LENGTH = 20;
@@ -23,9 +24,10 @@ export function JoinPage({ clientOverride = null }) {
   const [joinedSession, setJoinedSession] = useState(null);
   const [lobbyParticipants, setLobbyParticipants] = useState([]);
   const [participantCount, setParticipantCount] = useState(0);
-  const [currentPhase, setCurrentPhase] = useState('lobby'); // 'lobby' | 'reveal' | 'leaderboard'
+  const [currentPhase, setCurrentPhase] = useState('lobby'); // 'lobby' | 'reveal' | 'leaderboard' | 'ended'
   const [revealData, setRevealData] = useState(null);
   const [leaderboardData, setLeaderboardData] = useState(null);
+  const [finalResultData, setFinalResultData] = useState(null);
 
   const nameInputRef = useRef(null);
   const codeInputRef = useRef(null);
@@ -155,9 +157,14 @@ export function JoinPage({ clientOverride = null }) {
         } else if (msg.type === 'reveal') {
           setCurrentPhase('reveal');
           setRevealData(msg.data);
-        } else if (msg.type === 'leaderboard' || msg.type === 'ended') {
-          setCurrentPhase('leaderboard');
+        } else if (msg.type === 'leaderboard') {
+          // Keep showing leaderboard during game; ignore late leaderboard if already ended
+          setCurrentPhase((prev) => (prev === 'ended' ? 'ended' : 'leaderboard'));
           setLeaderboardData(msg.data);
+        } else if (msg.type === 'ended') {
+          // Dedicated final result screen when quiz ends (PB-28 / SCRUM-92)
+          setCurrentPhase('ended');
+          setFinalResultData(msg.data);
         } else if (msg.type === 'error') {
           if (timeoutTimerRef.current) {
             clearTimeout(timeoutTimerRef.current);
@@ -228,10 +235,66 @@ export function JoinPage({ clientOverride = null }) {
     setCurrentPhase('lobby');
     setRevealData(null);
     setLeaderboardData(null);
+    setFinalResultData(null);
     setIsJoining(false);
   };
 
   if (joinedSession) {
+    // 1. Dedicated Final Result Screen when quiz ends (PB-28 / SCRUM-92)
+    if (currentPhase === 'ended' && finalResultData) {
+      const participantName = joinedSession.displayName || '';
+      const participantId = joinedSession.participantId;
+
+      // Extract authoritative server ranking
+      const youData = finalResultData.you;
+
+      // Prefer matching by stable participant_id over potentially duplicated display_name
+      let matchingTop = null;
+      if (Array.isArray(finalResultData.top)) {
+        if (participantId !== undefined && participantId !== null) {
+          matchingTop = finalResultData.top.find((p) => p.participant_id === participantId);
+        }
+        if (!matchingTop && participantName) {
+          matchingTop = finalResultData.top.find(
+            (p) =>
+              p.display_name &&
+              p.display_name.trim().toLowerCase() === participantName.trim().toLowerCase()
+          );
+        }
+      }
+
+      const authoritativeRank =
+        youData?.rank !== undefined && youData?.rank !== null
+          ? youData.rank
+          : matchingTop?.rank !== undefined && matchingTop?.rank !== null
+          ? matchingTop.rank
+          : null;
+
+      // Authoritative score from backend 'ended' event only; do not fall back to stale joinedSession.score
+      const authoritativeScore =
+        youData?.score !== undefined && youData?.score !== null
+          ? youData.score
+          : matchingTop?.score !== undefined && matchingTop?.score !== null
+          ? matchingTop.score
+          : null;
+
+      return (
+        <div className="join-page-container">
+          <FinalResult
+            displayName={participantName}
+            rank={authoritativeRank}
+            score={authoritativeScore}
+            participantCount={finalResultData.count ?? participantCount}
+            quizTitle={joinedSession.quizTitle}
+            reason={finalResultData.reason}
+            top={finalResultData.top}
+            isDisconnected={!clientRef.current?.isOpen}
+            onBackToHome={handleLeave}
+          />
+        </div>
+      );
+    }
+
     if (currentPhase === 'reveal' && revealData) {
       return (
         <div className="join-page-container">
