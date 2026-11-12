@@ -550,4 +550,59 @@ describe('Participant Join Page (SCRUM-58)', () => {
       expect(screen.getByText('#2')).toBeInTheDocument();
     });
   });
+  it('23. shows the question with 4 answers, sends 1 answer, then shows the reveal for that question', async () => {
+    mockClient.send = vi.fn();
+    renderJoinPage();
+    fireEvent.change(screen.getByLabelText(/6 Digit Room Code/i), { target: { value: '123456' } });
+    fireEvent.change(screen.getByLabelText(/Display Name/i), { target: { value: 'Kasun' } });
+    fireEvent.click(screen.getByRole('button', { name: /Join Room/i }));
+    await waitFor(() => expect(mockClient.connectCalled).toBe(true));
+    mockClient.simulateMessage({
+      type: 'joined',
+      session_id: 1,
+      data: { participant_id: 5, display_name: 'Kasun', quiz_title: 'Bio 101', score: 0 },
+    });
+
+    mockClient.simulateMessage({
+      type: 'question',
+      session_id: 1,
+      data: {
+        question_id: 99,
+        number: 1,
+        total: 3,
+        text: 'Which process splits a cell in 2?',
+        options: ['Mitosis', 'Meiosis', 'Osmosis', 'Diffusion'],
+        time_limit_ms: 20000,
+        remaining_ms: 20000,
+        sent_at: 1,
+      },
+    });
+
+    expect(await screen.findByText('Which process splits a cell in 2?')).toBeInTheDocument();
+    expect(screen.getByText('Question 1 of 3')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Mitosis/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Meiosis/ }));
+
+    expect(mockClient.send).toHaveBeenCalledTimes(1);
+    expect(mockClient.send).toHaveBeenCalledWith('answer', { question_id: 99, option: 0 }, 1);
+    expect(screen.getByRole('status')).toHaveTextContent('Answer sent');
+
+    mockClient.simulateMessage({ type: 'locked', session_id: 1, data: { question_id: 99, reason: 'all_answered' } });
+    mockClient.simulateMessage({
+      type: 'reveal',
+      session_id: 1,
+      data: {
+        question_id: 99,
+        correct_index: 0,
+        distribution: [1, 0, 0, 0],
+        no_answer: 0,
+        source: { page_number: 4, snippet: 'Mitosis splits a cell.' },
+        you: { chosen_index: 0, is_correct: true, points: 950 },
+      },
+    });
+
+    expect(await screen.findByText(/Correct!/)).toBeInTheDocument();
+    expect(screen.getByText(/Source \(Page 4\)/)).toBeInTheDocument();
+    expect(screen.getByText('Mitosis')).toBeInTheDocument();
+  });
 });
