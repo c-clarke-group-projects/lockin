@@ -6,6 +6,7 @@ import { WaitingLobby } from '../components/WaitingLobby';
 import { BackgroundTextEffect } from '../components/BackgroundTextEffect';
 import { LockInLogo } from '../components/LockInLogo';
 import { Icon } from '../components/Icon';
+import { AnswerScreen } from '../components/AnswerScreen';
 import ParticipantReveal from '../views/participentReveal';
 import { Leaderboard } from '../components/Leaderboard';
 import { FinalResult } from '../components/FinalResult';
@@ -53,6 +54,9 @@ export function JoinPage({ clientOverride = null }) {
   const [revealData, setRevealData] = useState(null);
   const [leaderboardData, setLeaderboardData] = useState(null);
   const [finalResultData, setFinalResultData] = useState(null);
+  const [questionData, setQuestionData] = useState(null);
+  const [chosenOption, setChosenOption] = useState(null);
+  const [answersLocked, setAnswersLocked] = useState(false);
 
   const nameInputRef = useRef(null);
   const codeInputRef = useRef(null);
@@ -62,6 +66,7 @@ export function JoinPage({ clientOverride = null }) {
   const joiningRef = useRef(false);
   const joinedRef = useRef(null);
   const leavingRef = useRef(false);
+  const questionRef = useRef(null);
 
   // Initialize room code from URL (path parameter or query param)
   useEffect(() => {
@@ -147,6 +152,10 @@ export function JoinPage({ clientOverride = null }) {
     setRevealData(null);
     setLeaderboardData(null);
     setFinalResultData(null);
+    setQuestionData(null);
+    setChosenOption(null);
+    setAnswersLocked(false);
+    questionRef.current = null;
     setReconnecting(false);
     setIsJoining(false);
     if (message) {
@@ -163,9 +172,27 @@ export function JoinPage({ clientOverride = null }) {
       if (typeof msg.data?.count === 'number') {
         setParticipantCount(msg.data.count);
       }
+    } else if (msg?.type === 'question') {
+      if (questionRef.current?.question_id !== msg.data?.question_id) {
+        setChosenOption(null);
+      }
+      questionRef.current = msg.data;
+      setQuestionData(msg.data);
+      setAnswersLocked(false);
+      setCurrentPhase('question');
+    } else if (msg?.type === 'locked') {
+      setAnswersLocked(true);
     } else if (msg?.type === 'reveal') {
+      // reveal carries no text or options, so it is shown with the question it answers.
+      const question = questionRef.current?.question_id === msg.data?.question_id ? questionRef.current : {};
       setCurrentPhase('reveal');
-      setRevealData(msg.data);
+      const source = msg.data?.source;
+      setRevealData({
+        ...question,
+        ...msg.data,
+        source_page: source ? source.page_number : msg.data?.source_page,
+        source_snippet: source ? source.snippet : msg.data?.source_snippet,
+      });
     } else if (msg?.type === 'leaderboard') {
       // Keep showing leaderboard during game; ignore late leaderboard if already ended
       setCurrentPhase((prev) => (prev === 'ended' ? 'ended' : 'leaderboard'));
@@ -321,6 +348,18 @@ export function JoinPage({ clientOverride = null }) {
     }
   };
 
+  const handleAnswer = (option) => {
+    if (chosenOption !== null || !questionData || !clientRef.current || !joinedSession) {
+      return;
+    }
+    setChosenOption(option);
+    clientRef.current.send(
+      'answer',
+      { question_id: questionData.question_id, option },
+      joinedSession.sessionId
+    );
+  };
+
   const handleLeave = () => {
     leavingRef.current = true;
     if (clientRef.current && joinedSession) {
@@ -381,6 +420,24 @@ export function JoinPage({ clientOverride = null }) {
             isDisconnected={!clientRef.current?.isOpen}
             onBackToHome={handleLeave}
           />
+        </div>
+      );
+    }
+
+    if (currentPhase === 'question' && questionData) {
+      return (
+        <div className="stage">
+          <header className="topbar">
+            <LockInLogo to={null} />
+          </header>
+          <div className="dock">
+            <AnswerScreen
+              question={questionData}
+              chosen={chosenOption}
+              locked={answersLocked}
+              onAnswer={handleAnswer}
+            />
+          </div>
         </div>
       );
     }
