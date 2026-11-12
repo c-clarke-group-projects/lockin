@@ -8,17 +8,19 @@ import { Navbar } from '../../components/Navbar';
 import { Icon } from '../../components/Icon';
 import { BackgroundTextEffect } from '../../components/BackgroundTextEffect';
 import { QRCodeDisplay } from '../../components/QRCodeDisplay';
+import { HostGamePanel, applyGameMessage } from '../../components/HostGamePanel';
 
 const MAX_RECONNECT_ATTEMPTS = 8;
 const RECONNECT_STEP_MS = 2000;
 const MAX_RECONNECT_DELAY_MS = 8000;
+const GAME_MESSAGES = new Set(['question', 'answer_count', 'locked', 'reveal', 'leaderboard', 'ended']);
 
 function playerLabel(count) {
   return count === 1 ? '1 player' : `${count} players`;
 }
 
-/** Keeps a host control connection open for 1 room and reports lobby changes. */
-function useHostConnection(sessionId, onLobby, onFatal) {
+/** Keeps a host control connection open for 1 room and reports lobby and game changes. */
+function useHostConnection(sessionId, onLobby, onFatal, onGame, onServerError) {
   const [state, setState] = useState('connecting');
   const clientRef = useRef(null);
   const stoppedRef = useRef(false);
@@ -49,12 +51,16 @@ function useHostConnection(sessionId, onLobby, onFatal) {
           setState('connected');
         } else if (msg?.type === 'lobby') {
           onLobby(msg.data);
+        } else if (GAME_MESSAGES.has(msg?.type)) {
+          onGame(msg);
         } else if (msg?.type === 'error') {
           console.warn(`Room server error: ${msg.data?.code}`);
           if (msg.data?.code === 'unauthorised') {
             stoppedRef.current = true;
             client.disconnect();
             onFatal('unauthorised');
+          } else {
+            onServerError(msg.data?.message || 'The room server refused that. Try again.');
           }
         }
       });
@@ -67,7 +73,7 @@ function useHostConnection(sessionId, onLobby, onFatal) {
         console.warn(`Host connection attempt ${attempt + 1} failed`);
       }
     },
-    [sessionId, onLobby, onFatal]
+    [sessionId, onLobby, onFatal, onGame, onServerError]
   );
 
   useEffect(() => {
@@ -80,11 +86,12 @@ function useHostConnection(sessionId, onLobby, onFatal) {
     };
   }, [connect]);
 
-  const kick = (participantId) => {
-    clientRef.current?.send('kick', { participant_id: participantId }, Number(sessionId), getAuthToken());
+  const hostSend = (type, data = {}) => {
+    clientRef.current?.send(type, data, Number(sessionId), getAuthToken());
   };
+  const kick = (participantId) => hostSend('kick', { participant_id: participantId });
 
-  return { state, kick };
+  return { state, kick, hostSend };
 }
 
 export function HostLiveRoomPage() {
@@ -94,6 +101,8 @@ export function HostLiveRoomPage() {
   const [room, setRoom] = useState(null);
   const [loadError, setLoadError] = useState('');
   const [players, setPlayers] = useState([]);
+  const [game, setGame] = useState(null);
+  const [serverError, setServerError] = useState('');
 
   useEffect(() => {
     getSession(sessionId)
@@ -107,7 +116,29 @@ export function HostLiveRoomPage() {
     navigate('/host/login', { replace: true, state: { from: `/host/room/${sessionId}`, expired: true } });
   }, [navigate, sessionId]);
 
-  const { state, kick } = useHostConnection(sessionId, handleLobby, handleFatal);
+  const handleGame = useCallback((msg) => {
+    setServerError('');
+    setGame((current) => applyGameMessage(current, msg));
+  }, []);
+
+  const { state, kick, hostSend } = useHostConnection(
+    sessionId,
+    handleLobby,
+    handleFatal,
+    handleGame,
+    setServerError
+  );
+
+  const handleStart = () => {
+    setServerError('');
+    hostSend('start');
+  };
+  const handleNext = () => hostSend('next');
+  const handleEnd = () => {
+    if (window.confirm('End the quiz now for everyone?')) {
+      hostSend('end');
+    }
+  };
 
   const handleKick = (player) => {
     if (window.confirm(`Remove ${player.display_name} from the room?`)) {
@@ -162,7 +193,16 @@ export function HostLiveRoomPage() {
           </div>
         )}
 
-        {room && (
+        {serverError && (
+          <div className="notice notice--error" role="alert">
+            <Icon name="alert" />
+            <span>{serverError}</span>
+          </div>
+        )}
+
+        {room && game && <HostGamePanel game={game} onNext={handleNext} onEnd={handleEnd} />}
+
+        {room && !game && (
           <div className="live">
             <section className="sheet" aria-labelledby="join-how">
               <h2 id="join-how" className="field__label">
@@ -204,9 +244,18 @@ export function HostLiveRoomPage() {
                 </ul>
               )}
 
-              <p className="field__hint" style={{ marginTop: 20 }}>
-                Starting the quiz is not available yet. Players wait in this lobby.
-              </p>
+              <button
+                type="button"
+                className="pill pill--ink pill--block game__start"
+                onClick={handleStart}
+                disabled={players.length === 0 || state !== 'connected'}
+              >
+                Start quiz
+                <Icon name="arrowRight" className="pill__icon" />
+              </button>
+              {players.length === 0 && (
+                <p className="field__hint">Start opens once at least 1 player has joined.</p>
+              )}
             </section>
           </div>
         )}

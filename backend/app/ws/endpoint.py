@@ -1,11 +1,11 @@
-"""The /ws endpoint: lobby part of docs/WEBSOCKET_PROTOCOL.md.
+"""The /ws endpoint for docs/WEBSOCKET_PROTOCOL.md.
 
-Built here: join, rejoin, host_join, kick, leave and the lobby broadcast.
-The game loop messages (start, answer, next, end, flag, void) get wrong_phase
-until the live play tasks T08 to T10 are built.
+Built here: join, rejoin, host_join, kick, leave, the lobby broadcast and the game
+loop (start, answer, next, end). flag and void get wrong_phase until they are built.
 """
+import asyncio
 import logging
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 from fastapi import APIRouter, Depends, WebSocket
 from fastapi.concurrency import run_in_threadpool
@@ -15,9 +15,12 @@ from sqlalchemy.orm import Session
 from app.core.security import decode_access_token
 from app.db.session import get_db
 from app.models.entities import QuizSession
-from app.services import live_lobby, session_service
+from app.services import live_game, live_lobby, session_service
 from app.services.live_lobby import LobbyError
+from app.services.scoring import calculate_score
+from app.ws import game as live
 from app.ws import messages
+from app.ws.game import ChosenAnswer, Game, games
 from app.ws.messages import BadMessage
 from app.ws.rooms import registry, send_safely
 
@@ -38,12 +41,22 @@ class Connection:
     closed: bool = False
 
 
-async def _db(conn: Connection, fn, *args):
+# Sessions between the start check and the game being created, so 2 starts
+# cannot both pass, and lock timers kept referenced until they finish.
+_starting: set[int] = set()
+_timers: set[asyncio.Task] = set()
+
+
+async def _run(db: Session, fn, *args):
     def run():
-        conn.db.expire_all()
-        return fn(conn.db, *args)
+        db.expire_all()
+        return fn(db, *args)
 
     return await run_in_threadpool(run)
+
+
+async def _db(conn: Connection, fn, *args):
+    return await _run(conn.db, fn, *args)
 
 
 def _room_for_code(db: Session, join_code: str, allow_running: bool) -> dict:
@@ -80,6 +93,9 @@ async def _send(conn: Connection, message: dict) -> None:
 
 
 async def _broadcast_lobby(conn: Connection, session_id: int) -> None:
+    # Once the game runs a lobby message would send every phone back to the lobby.
+    if session_id in games:
+        return
     rows = await _db(conn, live_lobby.lobby_rows, session_id, registry.connected_ids(session_id))
     lobby = messages.build("lobby", session_id, {"participants": rows, "count": len(rows)})
     await registry.broadcast(session_id, lobby)
@@ -102,6 +118,8 @@ async def handle_join(conn: Connection, message: dict) -> None:
     name = live_lobby.clean_display_name(messages.require_str(data, "display_name"))
     room = await _db(conn, _room_for_code, join_code, False)
     session_id = room["session_id"]
+    if session_id in games or session_id in _starting:
+        raise LobbyError("wrong_phase", "The quiz has already started.")
 
     async with registry.room(session_id).lock:
         participant_id = await _db(conn, _add_seat, session_id, name)
@@ -135,13 +153,17 @@ async def handle_rejoin(conn: Connection, message: dict) -> None:
         registry.take_seat(session_id, participant_id, conn.socket)
 
     conn.role, conn.session_id, conn.participant_id = "participant", session_id, participant_id
+    score = await _db(conn, live_game.participant_score, participant_id)
     await _send(conn, messages.build("joined", session_id, {
         "participant_id": participant_id,
         "display_name": name,
         "quiz_title": room["quiz_title"],
-        "score": 0,
+        "score": score,
         "rejoined": True,
     }))
+    current = games.get(session_id)
+    if current is not None:
+        await _send(conn, live.state_message(current, participant_id))
     await _broadcast_lobby(conn, session_id)
 
 
@@ -162,6 +184,10 @@ async def handle_host_join(conn: Connection, message: dict) -> None:
     conn.role, conn.session_id, conn.host_id = "host", session_id, host_id
     registry.add_host(session_id, conn.socket)
     await _send(conn, messages.build("host_joined", session_id, {"screen": screen, **room}))
+    current = games.get(session_id)
+    if current is not None:
+        await _send(conn, live.state_message(current, None))
+        return
     rows = await _db(conn, live_lobby.lobby_rows, session_id, registry.connected_ids(session_id))
     await _send(conn, messages.build("lobby", session_id, {"participants": rows, "count": len(rows)}))
 
@@ -202,8 +228,155 @@ async def handle_leave(conn: Connection, message: dict) -> None:
     await conn.socket.close()
 
 
+async def _send_each(session_id: int, build) -> None:
+    """Send every seat and host screen its own copy, for messages that carry you."""
+    room = registry.room(session_id)
+    for participant_id, socket in list(room.seats.items()):
+        await send_safely(socket, build(participant_id))
+    for socket in list(room.hosts):
+        await send_safely(socket, build(None))
+
+
+async def _send_hosts(session_id: int, message: dict) -> None:
+    for socket in list(registry.room(session_id).hosts):
+        await send_safely(socket, message)
+
+
+def _everyone_answered(current: Game) -> bool:
+    connected = registry.connected_ids(current.session_id)
+    return bool(connected) and connected <= set(current.answers)
+
+
+async def _lock(db: Session, current: Game, reason: str, round_number: int | None = None) -> None:
+    if not current.try_lock(reason, round_number):
+        return
+    session_id, question_id = current.session_id, current.current["question_id"]
+    logger.info("Locked question %s on session %s: %s", question_id, session_id, reason)
+    await registry.broadcast(session_id, live.locked_message(current, reason))
+    answers = {pid: asdict(answer) for pid, answer in current.answers.items()}
+    current.seat_count = await _run(db, live_game.close_question, session_id, question_id, answers)
+    if current.phase == live.LOCKED:
+        current.phase = live.REVEAL
+        await _send_each(session_id, lambda pid: live.reveal_message(current, pid))
+
+
+async def _lock_when_time_is_up(db: Session, current: Game, round_number: int) -> None:
+    try:
+        await asyncio.sleep(current.current["time_limit_ms"] / 1000)
+        await _lock(db, current, "timer", round_number)
+    except Exception:
+        logger.exception("Lock timer failed on session %s", current.session_id)
+
+
+async def _ask_question(db: Session, current: Game, index: int) -> None:
+    round_number = current.open_question(index)
+    logger.info("Session %s question %s of %s", current.session_id, index + 1, len(current.questions))
+    await registry.broadcast(current.session_id, live.question_message(current))
+    task = asyncio.create_task(_lock_when_time_is_up(db, current, round_number))
+    _timers.add(task)
+    task.add_done_callback(_timers.discard)
+
+
+async def _finish(db: Session, current: Game, reason: str) -> None:
+    if current.phase == live.ENDED:
+        return
+    # Ending during a question still saves the answers already given to it.
+    open_question = current.phase == live.QUESTION
+    current.phase, current.end_reason = live.ENDED, reason
+    if open_question:
+        answers = {pid: asdict(answer) for pid, answer in current.answers.items()}
+        await _run(db, live_game.close_question, current.session_id,
+                   current.current["question_id"], answers)
+    await _run(db, live_game.end_session, current.session_id)
+    current.standings = await _run(db, live_game.standings, current.session_id)
+    await _send_each(current.session_id, lambda pid: live.ended_message(current, pid))
+
+
+async def handle_start(conn: Connection, message: dict) -> None:
+    _check_host(conn, message["token"])
+    session_id = conn.session_id
+    if session_id in games or session_id in _starting:
+        raise LobbyError("wrong_phase", "The quiz has already started.")
+    if not registry.connected_ids(session_id):
+        raise LobbyError("no_participants", "Wait for at least 1 player to join.")
+
+    _starting.add(session_id)
+    try:
+        if await _db(conn, _session_status, session_id) != "waiting":
+            raise LobbyError("wrong_phase", "The quiz has already started.")
+        questions = await _db(conn, live_game.start_session, session_id)
+        if not questions:
+            raise LobbyError("wrong_phase", "Add at least 1 question before starting.")
+        current = games[session_id] = Game(session_id=session_id, questions=questions)
+    finally:
+        _starting.discard(session_id)
+    await _ask_question(conn.db, current, 0)
+
+
+async def handle_answer(conn: Connection, message: dict) -> None:
+    data = message["data"]
+    question_id = messages.require_int(data, "question_id")
+    option = messages.require_int(data, "option")
+    if not 0 <= option <= 3:
+        raise BadMessage("option must be 0 to 3.")
+
+    current, participant_id = games.get(conn.session_id), conn.participant_id
+    if (
+        conn.role != "participant"
+        or current is None
+        or current.phase != live.QUESTION
+        or current.current["question_id"] != question_id
+        or participant_id in current.answers
+    ):
+        logger.info("Skipped answer from %s to question %s", participant_id, question_id)
+        return
+
+    question = current.current
+    answer_ms = live.now_ms() - current.sent_at
+    if answer_ms > question["time_limit_ms"]:
+        logger.info("Skipped late answer from %s after %s ms", participant_id, answer_ms)
+        return
+    is_correct = option == question["correct_index"]
+    points = calculate_score(is_correct, answer_ms, question["time_limit_ms"] // 1000)
+    current.answers[participant_id] = ChosenAnswer(option, is_correct, answer_ms, points)
+
+    session_id = conn.session_id
+    await _send(conn, messages.build("ack", session_id, {"for": "answer", "question_id": question_id}))
+    await _send_hosts(session_id, messages.build("answer_count", session_id, {
+        "question_id": question_id,
+        "answered": len(current.answers),
+        "connected": len(registry.connected_ids(session_id)),
+    }))
+    if _everyone_answered(current):
+        await _lock(conn.db, current, "all_answered")
+
+
+async def handle_next(conn: Connection, message: dict) -> None:
+    _check_host(conn, message["token"])
+    current = games.get(conn.session_id)
+    if current is None or current.phase not in (live.REVEAL, live.LEADERBOARD):
+        raise LobbyError("wrong_phase", "Next works after the answers are revealed.")
+
+    if current.phase == live.REVEAL:
+        current.phase = live.LEADERBOARD
+        current.standings = await _db(conn, live_game.standings, conn.session_id)
+        await _send_each(conn.session_id, lambda pid: live.leaderboard_message(current, pid))
+    elif current.is_last:
+        await _finish(conn.db, current, "finished")
+    else:
+        await _ask_question(conn.db, current, current.index + 1)
+
+
+async def handle_end(conn: Connection, message: dict) -> None:
+    _check_host(conn, message["token"])
+    current = games.get(conn.session_id)
+    if current is None:
+        current = games[conn.session_id] = Game(session_id=conn.session_id, questions=[])
+    await _finish(conn.db, current, "ended_by_host")
+
+
 async def handle_not_built(conn: Connection, message: dict) -> None:
-    raise LobbyError("wrong_phase", "Starting and playing the quiz is not available yet.")
+    raise LobbyError("wrong_phase", "Flags and voiding are not available yet.")
 
 
 HANDLERS = {
@@ -212,10 +385,10 @@ HANDLERS = {
     "host_join": handle_host_join,
     "kick": handle_kick,
     "leave": handle_leave,
-    "start": handle_not_built,
-    "answer": handle_not_built,
-    "next": handle_not_built,
-    "end": handle_not_built,
+    "start": handle_start,
+    "answer": handle_answer,
+    "next": handle_next,
+    "end": handle_end,
     "flag": handle_not_built,
     "void": handle_not_built,
 }
@@ -233,6 +406,10 @@ async def _handle(conn: Connection, raw: str) -> None:
     if conn.role is None and message_type not in messages.FIRST_MESSAGE_TYPES:
         await _send(conn, messages.error("not_joined", "Join a room first.", conn.session_id))
         return
+    current = games.get(conn.session_id)
+    if current is not None and current.phase == live.ENDED and message_type != "leave":
+        await _send(conn, messages.error("room_closed", "This quiz has ended.", conn.session_id))
+        return
 
     try:
         await HANDLERS[message_type](conn, message)
@@ -248,6 +425,9 @@ async def _drop(conn: Connection) -> None:
     if conn.role == "participant":
         registry.free_seat(conn.session_id, conn.participant_id, conn.socket)
         await _broadcast_lobby(conn, conn.session_id)
+        current = games.get(conn.session_id)
+        if current is not None and current.phase == live.QUESTION and _everyone_answered(current):
+            await _lock(conn.db, current, "all_answered")
     elif conn.role == "host":
         registry.remove_host(conn.session_id, conn.socket)
     logger.info("Connection closed for %s on session %s", conn.role, conn.session_id)

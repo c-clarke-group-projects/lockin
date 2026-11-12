@@ -629,3 +629,4 @@ Applies to every task, on top of `PLAN.md` section 6:
 | 2026-11-01 | all | Plan created from `origin/dev` at `6feda2f` |
 | 2026-11-01 | T12, T17 | Keshan owns SCRUM-91, so T12 is no longer conditional. Hosted deployment and its costs deferred |
 | 2026-11-08 | T04 to T07, T11 in part | `/ws` built in `backend/app/ws` with `join`, `rejoin`, `host_join`, `kick`, `leave` and `lobby`. Live state is in memory in 1 process, the Redis `RoomStore` of T03 is still Todo. Publish endpoint `POST /api/quizzes/{id}/sessions` added for the lobby, overlapping SCRUM-40 |
+| 2026-11-12 | T08 to T10, T11 in part | `start`, `question`, `answer`, `locked`, `reveal`, `next`, `leaderboard`, `end` and `ended` built in `backend/app/ws`. Game state is in memory in 1 process like the lobby. A rejoin or host_join gets the current phase message. Host Start, Next and End controls and the phone answer screen added. `flag` and `void` still answer `wrong_phase` |

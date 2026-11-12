@@ -10,6 +10,7 @@ from app.db.base import Base
 from app.db.session import get_db
 from app.main import app as main_app
 from app.models import entities
+from app.ws.game import games
 
 HOST_ID = 1
 OTHER_HOST_ID = 2
@@ -57,3 +58,11 @@ def client(app: FastAPI) -> TestClient:
 def host_client(app: FastAPI) -> TestClient:
     app.dependency_overrides[current_host_id] = lambda: HOST_ID
     return TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def no_live_games():
+    # Live games are held in memory and every test database starts its ids at 1.
+    games.clear()
+    yield
+    games.clear()
