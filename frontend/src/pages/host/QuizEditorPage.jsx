@@ -17,6 +17,31 @@ function questionLabel(count) {
   return count === 1 ? '1 question' : `${count} questions`;
 }
 
+const WRITTEN_GROUP = 'written';
+
+/** 1 group per PDF upload in upload order, then the written questions. */
+function groupBySource(questions) {
+  const groups = new Map();
+  const uploadsPerName = new Map();
+  questions.forEach((question) => {
+    const materialId = question.source_material_id;
+    const key = materialId ? `pdf-${materialId}` : WRITTEN_GROUP;
+    if (!groups.has(key)) {
+      let title = 'Written by you';
+      if (materialId) {
+        const name = question.source_file_name || 'Uploaded PDF';
+        const upload = (uploadsPerName.get(name) ?? 0) + 1;
+        uploadsPerName.set(name, upload);
+        title = upload === 1 ? name : `${name} (upload ${upload})`;
+      }
+      groups.set(key, { key, title, questions: [] });
+    }
+    groups.get(key).questions.push(question);
+  });
+  const all = [...groups.values()];
+  return [...all.filter((group) => group.key !== WRITTEN_GROUP), ...all.filter((group) => group.key === WRITTEN_GROUP)];
+}
+
 export function QuizEditorPage() {
   const { id: quizId } = useParams();
   const navigate = useNavigate();
@@ -191,19 +216,25 @@ export function QuizEditorPage() {
           {quiz && questions.length === 0 && (
             <p className="empty">No questions yet. Generate them from a PDF or write your first one above.</p>
           )}
-          {questions.length > 0 && (
-            <ol className="question-list">
-              {questions.map((question, index) => (
-                <QuestionCard
-                  key={question.id ?? index}
-                  question={question}
-                  number={index + 1}
-                  onRemove={handleRemove}
-                  removing={removingId === question.id}
-                />
-              ))}
-            </ol>
-          )}
+          {groupBySource(questions).map((group) => (
+            <section key={group.key} className="question-group" aria-label={group.title}>
+              <h3 className="question-group__title">
+                <span className="question-group__name">{group.title}</span>
+                <span className="question-group__count">{questionLabel(group.questions.length)}</span>
+              </h3>
+              <ol className="question-list">
+                {group.questions.map((question, index) => (
+                  <QuestionCard
+                    key={question.id ?? index}
+                    question={question}
+                    number={index + 1}
+                    onRemove={handleRemove}
+                    removing={removingId === question.id}
+                  />
+                ))}
+              </ol>
+            </section>
+          ))}
         </section>
       </main>
     </div>
