@@ -52,7 +52,7 @@ class MockQuizWebSocketClient {
 
 describe('LeaderboardPage', () => {
   beforeEach(() => {
-    window.localStorage.removeItem('access_token');
+    window.localStorage.removeItem('lockin_host_token');
   });
 
   it('renders page and validates room code from route', async () => {
@@ -127,7 +127,7 @@ describe('LeaderboardPage', () => {
   });
 
   it('offers the host a flagged-question review after the game ends', () => {
-    window.localStorage.setItem('access_token', 'host-token');
+    window.localStorage.setItem('lockin_host_token', 'host-token');
     const mockClient = new MockQuizWebSocketClient();
 
     render(
@@ -157,6 +157,6 @@ describe('LeaderboardPage', () => {
     expect(
       screen.getByRole('button', { name: 'Review flagged questions' })
     ).toBeInTheDocument();
-    window.localStorage.removeItem('access_token');
+    window.localStorage.removeItem('lockin_host_token');
   });
 });

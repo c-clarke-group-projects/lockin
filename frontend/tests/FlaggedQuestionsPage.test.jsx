@@ -27,7 +27,7 @@ function response(data, status = 200) {
 
 describe('FlaggedQuestionsPage', () => {
   beforeEach(() => {
-    window.localStorage.setItem('access_token', 'host-token');
+    window.localStorage.setItem('lockin_host_token', 'host-token');
     vi.stubGlobal('fetch', vi.fn());
   });
 
