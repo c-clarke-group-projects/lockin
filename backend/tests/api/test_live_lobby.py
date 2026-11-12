@@ -240,7 +240,7 @@ def test_rejoin_errors(client, room: QuizSession) -> None:
     assert missing["data"]["code"] == "seat_not_found"
 
 
-def test_game_messages_are_not_built_yet(client, room: QuizSession) -> None:
+def test_start_with_nobody_in_the_lobby_is_refused(client, room: QuizSession) -> None:
     with client.websocket_connect("/ws") as host:
         send(host, "host_join", {"screen": "control"}, room.id, create_access_token(HOST_ID))
         host.receive_json()
@@ -248,4 +248,4 @@ def test_game_messages_are_not_built_yet(client, room: QuizSession) -> None:
         send(host, "start", {}, room.id, create_access_token(HOST_ID))
         reply = host.receive_json()
 
-    assert reply["data"]["code"] == "wrong_phase"
+    assert reply["data"]["code"] == "no_participants"
