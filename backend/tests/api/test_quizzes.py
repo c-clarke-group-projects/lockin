@@ -83,14 +83,15 @@ def test_list_quizzes_shows_title_count_date_and_newest_first(
 def test_open_quiz_returns_questions(host_client, db_session: Session) -> None:
     add_host(db_session, HOST_ID)
     quiz = add_quiz(db_session, HOST_ID, "Quiz", datetime(2026, 10, 21))
-    add_question(db_session, quiz.id)
+    question = add_question(db_session, quiz.id)
 
     response = host_client.get(f"/api/quizzes/{quiz.id}")
 
     assert response.status_code == 200
     assert response.json()["questions"] == [
         {
-
+            "id": question.id,
+            "quiz_id": quiz.id,
             "text": "What is 2 + 2?",
             "options": ["3", "4", "5", "6"],
             "correct_index": 1,
