@@ -3,6 +3,7 @@ from datetime import datetime
 import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from starlette.websockets import WebSocketDisconnect
 
 from app.core.security import create_access_token
 from app.models.entities import Host, Participant, Quiz, QuizSession
@@ -203,6 +204,10 @@ def test_leave_before_start_frees_the_name(client, room: QuizSession) -> None:
         join(first, "Ana")
         first.receive_json()
         send(first, "leave", {}, room.id)
+        # The server closes the socket once leave is handled. Leaving the block
+        # earlier can cancel the handler before the name is freed.
+        with pytest.raises(WebSocketDisconnect):
+            first.receive_json()
 
     with client.websocket_connect("/ws") as again:
         assert join(again, "Ana")["type"] == "joined"
