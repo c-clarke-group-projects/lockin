@@ -342,4 +342,28 @@ describe('Big Screen Lobby Component (SCRUM-60)', () => {
 
     expect(mockClient.disconnected).toBe(true);
   });
+
+  it('15. transitions to leaderboard view upon receiving leaderboard message (SCRUM-62)', async () => {
+    renderLobby({ initialRoomCode: '654321' });
+
+    await waitFor(() => {
+      expect(mockClient.connectCalled).toBe(true);
+    });
+
+    mockClient.simulateMessage({
+      type: 'leaderboard',
+      session_id: 1,
+      data: {
+        top: [
+          { rank: 1, participant_id: 1, display_name: 'Big Screen Leader', score: 1800 },
+        ],
+        count: 1,
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Big Screen Leader')).toBeInTheDocument();
+      expect(screen.getByText('1800')).toBeInTheDocument();
+    });
+  });
 });

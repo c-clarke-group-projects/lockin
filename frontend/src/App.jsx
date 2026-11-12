@@ -7,6 +7,7 @@ import { HostDashboardPage } from './pages/host/HostDashboardPage';
 import { QuizEditorPage } from './pages/host/QuizEditorPage';
 import { HostLiveRoomPage } from './pages/host/HostLiveRoomPage';
 import { RequireHost } from './components/RequireHost';
+import { LeaderboardPage } from './pages/LeaderboardPage';
 
 export function App() {
   return (
@@ -28,6 +29,10 @@ export function App() {
         {/* Big screen lobby */}
         <Route path="/big-screen" element={<BigScreenLobby />} />
         <Route path="/big-screen/:code" element={<BigScreenLobby />} />
+
+        {/* Leaderboard */}
+        <Route path="/leaderboard" element={<LeaderboardPage />} />
+        <Route path="/leaderboard/:code" element={<LeaderboardPage />} />
 
         <Route path="*" element={<Navigate to="/join" replace />} />
       </Routes>

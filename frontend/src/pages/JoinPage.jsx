@@ -6,6 +6,9 @@ import { WaitingLobby } from '../components/WaitingLobby';
 import { BackgroundTextEffect } from '../components/BackgroundTextEffect';
 import { LockInLogo } from '../components/LockInLogo';
 import { Icon } from '../components/Icon';
+import ParticipantReveal from '../views/participentReveal';
+import { Leaderboard } from '../components/Leaderboard';
+import { FinalResult } from '../components/FinalResult';
 
 const ROOM_CODE_REGEX = /^\d{6}$/;
 const MAX_NAME_LENGTH = 20;
@@ -41,11 +44,15 @@ export function JoinPage({ clientOverride = null }) {
   const [errorMessage, setErrorMessage] = useState('');
   const [infoMessage, setInfoMessage] = useState('');
 
-  // Joined state
+  // Joined state & Live game phases
   const [joinedSession, setJoinedSession] = useState(null);
   const [lobbyParticipants, setLobbyParticipants] = useState([]);
   const [participantCount, setParticipantCount] = useState(0);
   const [reconnecting, setReconnecting] = useState(false);
+  const [currentPhase, setCurrentPhase] = useState('lobby'); // 'lobby' | 'reveal' | 'leaderboard' | 'ended'
+  const [revealData, setRevealData] = useState(null);
+  const [leaderboardData, setLeaderboardData] = useState(null);
+  const [finalResultData, setFinalResultData] = useState(null);
 
   const nameInputRef = useRef(null);
   const codeInputRef = useRef(null);
@@ -136,6 +143,10 @@ export function JoinPage({ clientOverride = null }) {
     setJoinedSession(null);
     setLobbyParticipants([]);
     setParticipantCount(0);
+    setCurrentPhase('lobby');
+    setRevealData(null);
+    setLeaderboardData(null);
+    setFinalResultData(null);
     setReconnecting(false);
     setIsJoining(false);
     if (message) {
@@ -143,12 +154,26 @@ export function JoinPage({ clientOverride = null }) {
     }
   };
 
-  const applyLobby = (msg) => {
-    if (msg.data?.participants) {
-      setLobbyParticipants(msg.data.participants);
-    }
-    if (typeof msg.data?.count === 'number') {
-      setParticipantCount(msg.data.count);
+  const applyLiveMessage = (msg) => {
+    if (msg?.type === 'lobby') {
+      setCurrentPhase('lobby');
+      if (msg.data?.participants) {
+        setLobbyParticipants(msg.data.participants);
+      }
+      if (typeof msg.data?.count === 'number') {
+        setParticipantCount(msg.data.count);
+      }
+    } else if (msg?.type === 'reveal') {
+      setCurrentPhase('reveal');
+      setRevealData(msg.data);
+    } else if (msg?.type === 'leaderboard') {
+      // Keep showing leaderboard during game; ignore late leaderboard if already ended
+      setCurrentPhase((prev) => (prev === 'ended' ? 'ended' : 'leaderboard'));
+      setLeaderboardData(msg.data);
+    } else if (msg?.type === 'ended') {
+      // Dedicated final result screen when quiz ends (PB-28 / SCRUM-92)
+      setCurrentPhase('ended');
+      setFinalResultData(msg.data);
     }
   };
 
@@ -191,9 +216,8 @@ export function JoinPage({ clientOverride = null }) {
 
   const watchJoinedConnection = (client, attempt = 0) => {
     client.onMessage((msg) => {
-      if (msg?.type === 'lobby') {
-        applyLobby(msg);
-      } else if (msg?.type === 'error' && msg.data?.code === 'removed_by_host') {
+      applyLiveMessage(msg);
+      if (msg?.type === 'error' && msg.data?.code === 'removed_by_host') {
         leavingRef.current = true;
         resetToForm('The host removed you from this room.');
       } else if (msg?.type === 'error' && msg.data?.code === 'seat_in_use') {
@@ -263,12 +287,9 @@ export function JoinPage({ clientOverride = null }) {
         }
       });
 
-      // Lobby updates arrive right after joined, before watchJoinedConnection runs.
-      client.onMessage((msg) => {
-        if (msg?.type === 'lobby') {
-          applyLobby(msg);
-        }
-      });
+      // Lobby and game updates arrive on this client after joined, including
+      // the first lobby that comes before watchJoinedConnection runs.
+      client.onMessage(applyLiveMessage);
 
       client.onError(() => {
         if (!joiningRef.current) return;
@@ -309,6 +330,96 @@ export function JoinPage({ clientOverride = null }) {
   };
 
   if (joinedSession) {
+    // 1. Dedicated Final Result Screen when quiz ends (PB-28 / SCRUM-92)
+    if (currentPhase === 'ended' && finalResultData) {
+      const participantName = joinedSession.displayName || '';
+      const participantId = joinedSession.participantId;
+
+      // Extract authoritative server ranking
+      const youData = finalResultData.you;
+
+      // Prefer matching by stable participant_id over potentially duplicated display_name
+      let matchingTop = null;
+      if (Array.isArray(finalResultData.top)) {
+        if (participantId !== undefined && participantId !== null) {
+          matchingTop = finalResultData.top.find((p) => p.participant_id === participantId);
+        }
+        if (!matchingTop && participantName) {
+          matchingTop = finalResultData.top.find(
+            (p) =>
+              p.display_name &&
+              p.display_name.trim().toLowerCase() === participantName.trim().toLowerCase()
+          );
+        }
+      }
+
+      const authoritativeRank =
+        youData?.rank !== undefined && youData?.rank !== null
+          ? youData.rank
+          : matchingTop?.rank !== undefined && matchingTop?.rank !== null
+          ? matchingTop.rank
+          : null;
+
+      // Authoritative score from backend 'ended' event only; do not fall back to stale joinedSession.score
+      const authoritativeScore =
+        youData?.score !== undefined && youData?.score !== null
+          ? youData.score
+          : matchingTop?.score !== undefined && matchingTop?.score !== null
+          ? matchingTop.score
+          : null;
+
+      return (
+        <div className="join-page-container">
+          <FinalResult
+            displayName={participantName}
+            rank={authoritativeRank}
+            score={authoritativeScore}
+            participantCount={finalResultData.count ?? participantCount}
+            quizTitle={joinedSession.quizTitle}
+            reason={finalResultData.reason}
+            top={finalResultData.top}
+            isDisconnected={!clientRef.current?.isOpen}
+            onBackToHome={handleLeave}
+          />
+        </div>
+      );
+    }
+
+    if (currentPhase === 'reveal' && revealData) {
+      return (
+        <div className="join-page-container">
+          <ParticipantReveal
+            questionData={revealData}
+            selectedOption={revealData.you?.chosen_index ?? null}
+            sessionId={joinedSession.sessionId}
+            participantId={joinedSession.participantId}
+            isRevealPhase={true}
+            wsClient={clientRef.current}
+          />
+        </div>
+      );
+    }
+
+    if (currentPhase === 'leaderboard' && leaderboardData) {
+      return (
+        <div className="join-page-container">
+          <Leaderboard
+            top={leaderboardData.top}
+            count={leaderboardData.count}
+            you={
+              leaderboardData.you || {
+                rank: null,
+                score: joinedSession.score,
+                display_name: joinedSession.displayName,
+              }
+            }
+            variant="mobile"
+            client={clientRef.current}
+          />
+        </div>
+      );
+    }
+
     return (
       <div className="stage">
         <BackgroundTextEffect text={joinedSession.roomCode} />

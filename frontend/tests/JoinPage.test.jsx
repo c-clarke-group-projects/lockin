@@ -459,4 +459,95 @@ describe('Participant Join Page (SCRUM-58)', () => {
       expect(screen.getByRole('alert')).toHaveTextContent(/Display name must be 1 to 20 characters/i);
     });
   });
+
+  it('21. transitions to reveal phase and mounts ParticipantReveal upon receiving reveal message (SCRUM-62)', async () => {
+    renderJoinPage();
+    fireEvent.change(screen.getByLabelText(/6 Digit Room Code/i), { target: { value: '123456' } });
+    fireEvent.change(screen.getByLabelText(/Display Name/i), { target: { value: 'Kasun' } });
+    fireEvent.click(screen.getByRole('button', { name: /Join Room/i }));
+
+    await waitFor(() => {
+      expect(mockClient.connectCalled).toBe(true);
+    });
+
+    // Simulate joined
+    mockClient.simulateMessage({
+      type: 'joined',
+      session_id: 1,
+      data: {
+        participant_id: 5,
+        display_name: 'Kasun',
+        quiz_title: 'Bio 101',
+        score: 100,
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Bio 101/i)).toBeInTheDocument();
+    });
+
+    // Now simulate reveal message broadcast
+    mockClient.simulateMessage({
+      type: 'reveal',
+      session_id: 1,
+      data: {
+        question_id: 99,
+        options: ['Mitosis', 'Meiosis', 'Osmosis', 'Diffusion'],
+        correct_index: 0,
+        source_page: 5,
+        source_snippet: 'Cell division starts with mitosis.',
+        you: { chosen_index: 0, is_correct: true, points: 500 },
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Correct! 🎉/i)).toBeInTheDocument();
+      expect(screen.getByText(/Source \(Page 5\)/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /challenge this question/i })).toBeInTheDocument();
+    });
+  });
+
+  it('22. transitions to leaderboard phase and mounts mobile Leaderboard upon receiving leaderboard message (SCRUM-62)', async () => {
+    renderJoinPage();
+    fireEvent.change(screen.getByLabelText(/6 Digit Room Code/i), { target: { value: '123456' } });
+    fireEvent.change(screen.getByLabelText(/Display Name/i), { target: { value: 'Kasun' } });
+    fireEvent.click(screen.getByRole('button', { name: /Join Room/i }));
+
+    await waitFor(() => {
+      expect(mockClient.connectCalled).toBe(true);
+    });
+
+    // Simulate joined
+    mockClient.simulateMessage({
+      type: 'joined',
+      session_id: 1,
+      data: {
+        participant_id: 5,
+        display_name: 'Kasun',
+        quiz_title: 'Bio 101',
+        score: 100,
+      },
+    });
+
+    // Simulate leaderboard broadcast
+    mockClient.simulateMessage({
+      type: 'leaderboard',
+      session_id: 1,
+      data: {
+        top: [
+          { rank: 1, participant_id: 10, display_name: 'Amara', score: 1000 },
+          { rank: 2, participant_id: 5, display_name: 'Kasun', score: 600 },
+        ],
+        count: 2,
+        you: { rank: 2, score: 600 },
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Amara')).toBeInTheDocument();
+      expect(screen.getByText('Kasun')).toBeInTheDocument();
+      expect(screen.getByRole('region', { name: /your ranking summary/i })).toBeInTheDocument();
+      expect(screen.getByText('#2')).toBeInTheDocument();
+    });
+  });
 });
