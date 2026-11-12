@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { QuizWebSocketClient } from '../lib/websocket';
 import { QRCodeDisplay } from '../components/QRCodeDisplay';
+import { Leaderboard } from '../components/Leaderboard';
 
 const ROOM_CODE_REGEX = /^\d{6}$/;
 
@@ -72,6 +73,7 @@ export function BigScreenLobby({
   const [isConnecting, setIsConnecting] = useState(true);
   const [errorMessage, setErrorMessage] = useState(isCodeValid ? '' : 'Invalid 6 digit room code.');
   const [quizStarted, setQuizStarted] = useState(false);
+  const [leaderboardData, setLeaderboardData] = useState(null);
 
   const clientRef = useRef(clientOverride);
 
@@ -104,11 +106,14 @@ export function BigScreenLobby({
             setQuizTitle(msg.data.quiz_title);
           }
         } else if (msg.type === 'lobby') {
+          setLeaderboardData(null);
           const rawParticipants = msg.data?.participants || [];
           const uniqueList = deduplicateParticipants(rawParticipants);
           setParticipants(uniqueList);
           const count = typeof msg.data?.count === 'number' ? msg.data.count : uniqueList.length;
           setParticipantCount(count);
+        } else if (msg.type === 'leaderboard' || msg.type === 'ended') {
+          setLeaderboardData(msg.data);
         } else if (msg.type === 'question') {
           // Quiz has started
           setQuizStarted(true);
@@ -176,6 +181,32 @@ export function BigScreenLobby({
             Go to Join Page
           </button>
         </div>
+      </div>
+    );
+  }
+
+  // Leaderboard phase on Big Screen
+  if (leaderboardData) {
+    return (
+      <div className="big-screen-container">
+        <header className="big-screen-header">
+          <div className="big-screen-brand-box">
+            <h1 className="big-screen-brand">Lockin</h1>
+            <span className="big-screen-quiz-title">{quizTitle}</span>
+          </div>
+          <div className="big-screen-status-box">
+            <span className="status-badge status-connected">Live Leaderboard</span>
+          </div>
+        </header>
+        <main className="big-screen-main" style={{ justifyContent: 'center' }}>
+          <Leaderboard
+            top={leaderboardData?.top}
+            count={leaderboardData?.count}
+            variant="big-screen"
+            client={clientRef.current}
+            title={quizTitle ? `${quizTitle} - Leaderboard` : 'Live Leaderboard'}
+          />
+        </main>
       </div>
     );
   }

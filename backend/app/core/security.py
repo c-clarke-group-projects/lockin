@@ -9,9 +9,11 @@ TOKEN_EXPIRE_HOURS = 12
 
 
 def _secret_key() -> str:
-    key = os.environ.get("SECRET_KEY")
+    # JWT_SECRET is the documented name in .env.example. SECRET_KEY is kept for
+    # machines that were set up before the name was aligned.
+    key = os.environ.get("JWT_SECRET") or os.environ.get("SECRET_KEY")
     if not key:
-        raise RuntimeError("SECRET_KEY must be set before using authentication.")
+        raise RuntimeError("JWT_SECRET must be set before using authentication.")
     return key
 
 
