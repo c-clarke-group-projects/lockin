@@ -169,17 +169,42 @@ def test_a_second_answer_is_ignored(client, db_session: Session, room) -> None:
             send(host, "start", {}, room.id, token)
             question_id = host.receive_json()["data"]["question_id"]
             ana.receive_json()
+            ben.receive_json()
+
+            send(ana, "answer", {"question_id": question_id, "option": 1}, room.id)
+            assert ana.receive_json()["type"] == "ack"
+            send(ana, "answer", {"question_id": question_id, "option": 2}, room.id)
+            send(ben, "answer", {"question_id": question_id, "option": 0}, room.id)
+            assert [ben.receive_json()["type"] for _ in range(3)] == ["ack", "locked", "reveal"]
+            # No second ack: the next thing Ana gets is the lock.
+            assert ana.receive_json()["type"] == "locked"
+
+    rows = db_session.scalars(select(Answer).where(Answer.question_id == question_id)).all()
+    by_choice = sorted((row.chosen_index, row.is_correct, row.points > 0) for row in rows)
+    assert by_choice == [(0, False, False), (1, True, True)]
+
+
+def test_ending_during_a_question_keeps_the_answers_given(client, db_session: Session, room) -> None:
+    with client.websocket_connect("/ws") as host:
+        token = host_in(host, room)
+        with client.websocket_connect("/ws") as ana, client.websocket_connect("/ws") as ben:
+            phone_in(ana, host, "Ana")
+            phone_in(ben, host, "Ben")
+            ana.receive_json()
+            send(host, "start", {}, room.id, token)
+            question_id = host.receive_json()["data"]["question_id"]
+            ana.receive_json()
 
             send(ana, "answer", {"question_id": question_id, "option": 1}, room.id)
             ana.receive_json()
-            send(ana, "answer", {"question_id": question_id, "option": 2}, room.id)
-            send(ana, "leave", {}, room.id)
-            # The next thing Ana gets is the close, so the second answer got no reply.
-            with pytest.raises(WebSocketDisconnect):
-                ana.receive_json()
+            host.receive_json()
+            send(host, "end", {}, room.id, token)
+            ended = host.receive_json()
 
+    assert ended["data"]["top"][0]["display_name"] == "Ana"
+    assert ended["data"]["top"][0]["score"] > 500
     rows = db_session.scalars(select(Answer).where(Answer.question_id == question_id)).all()
-    assert [(row.chosen_index, row.is_correct) for row in rows if row.chosen_index is not None] == [(1, True)]
+    assert len(rows) == 2
 
 
 def test_the_timer_locks_a_question_nobody_answered(client, db_session: Session) -> None:

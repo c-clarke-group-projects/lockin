@@ -55,50 +55,27 @@ def _source(question: Question) -> dict | None:
     return None
 
 
-def save_answer(
-    db: Session,
-    session_id: int,
-    question_id: int,
-    participant_id: int,
-    chosen_index: int,
-    is_correct: bool,
-    answer_ms: int,
-    points: int,
-) -> None:
-    db.add(Answer(
-        session_id=session_id,
-        question_id=question_id,
-        participant_id=participant_id,
-        chosen_index=chosen_index,
-        is_correct=is_correct,
-        answer_ms=answer_ms,
-        points=points,
-    ))
+def close_question(db: Session, session_id: int, question_id: int, answers: dict[int, dict]) -> int:
+    """Write every seat's row for 1 question in 1 transaction. Returns the seat count.
+
+    answers maps participant id to chosen_index, is_correct, answer_ms and points.
+    Rows are written only here, at the lock, so 2 handlers never race to insert
+    the same seat. Seats without an answer get a 0 point row.
+    """
+    seat_ids = db.scalars(select(Participant.id).where(Participant.session_id == session_id)).all()
+    for participant_id in seat_ids:
+        given = answers.get(participant_id, {"points": 0})
+        db.add(Answer(
+            session_id=session_id,
+            question_id=question_id,
+            participant_id=participant_id,
+            **given,
+        ))
     try:
         db.commit()
     except IntegrityError:
         db.rollback()
-        logger.info("Skipped a second answer from %s to question %s", participant_id, question_id)
-
-
-def close_question(db: Session, session_id: int, question_id: int) -> int:
-    """Write a 0 point row for every seat that did not answer. Returns the seat count."""
-    seat_ids = db.scalars(select(Participant.id).where(Participant.session_id == session_id)).all()
-    answered = set(db.scalars(
-        select(Answer.participant_id).where(
-            Answer.session_id == session_id,
-            Answer.question_id == question_id,
-        )
-    ))
-    for participant_id in seat_ids:
-        if participant_id not in answered:
-            db.add(Answer(
-                session_id=session_id,
-                question_id=question_id,
-                participant_id=participant_id,
-                points=0,
-            ))
-    db.commit()
+        logger.warning("Question %s on session %s was already closed", question_id, session_id)
     return len(seat_ids)
 
 

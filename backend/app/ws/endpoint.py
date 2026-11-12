@@ -5,7 +5,7 @@ loop (start, answer, next, end). flag and void get wrong_phase until they are bu
 """
 import asyncio
 import logging
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 from fastapi import APIRouter, Depends, WebSocket
 from fastapi.concurrency import run_in_threadpool
@@ -253,7 +253,8 @@ async def _lock(db: Session, current: Game, reason: str, round_number: int | Non
     session_id, question_id = current.session_id, current.current["question_id"]
     logger.info("Locked question %s on session %s: %s", question_id, session_id, reason)
     await registry.broadcast(session_id, live.locked_message(current, reason))
-    current.seat_count = await _run(db, live_game.close_question, session_id, question_id)
+    answers = {pid: asdict(answer) for pid, answer in current.answers.items()}
+    current.seat_count = await _run(db, live_game.close_question, session_id, question_id, answers)
     if current.phase == live.LOCKED:
         current.phase = live.REVEAL
         await _send_each(session_id, lambda pid: live.reveal_message(current, pid))
@@ -279,7 +280,13 @@ async def _ask_question(db: Session, current: Game, index: int) -> None:
 async def _finish(db: Session, current: Game, reason: str) -> None:
     if current.phase == live.ENDED:
         return
+    # Ending during a question still saves the answers already given to it.
+    open_question = current.phase == live.QUESTION
     current.phase, current.end_reason = live.ENDED, reason
+    if open_question:
+        answers = {pid: asdict(answer) for pid, answer in current.answers.items()}
+        await _run(db, live_game.close_question, current.session_id,
+                   current.current["question_id"], answers)
     await _run(db, live_game.end_session, current.session_id)
     current.standings = await _run(db, live_game.standings, current.session_id)
     await _send_each(current.session_id, lambda pid: live.ended_message(current, pid))
@@ -331,11 +338,9 @@ async def handle_answer(conn: Connection, message: dict) -> None:
         return
     is_correct = option == question["correct_index"]
     points = calculate_score(is_correct, answer_ms, question["time_limit_ms"] // 1000)
-    current.answers[participant_id] = ChosenAnswer(option, is_correct, points)
+    current.answers[participant_id] = ChosenAnswer(option, is_correct, answer_ms, points)
 
     session_id = conn.session_id
-    await _db(conn, live_game.save_answer, session_id, question_id, participant_id,
-              option, is_correct, answer_ms, points)
     await _send(conn, messages.build("ack", session_id, {"for": "answer", "question_id": question_id}))
     await _send_hosts(session_id, messages.build("answer_count", session_id, {
         "question_id": question_id,
