@@ -86,6 +86,12 @@ def test_snippet_match_ignores_case():
     assert ok is True
 
 
+def test_snippet_match_ignores_line_breaks_in_the_page():
+    wrapped_page = "Photosynthesis happens in the\nchloroplast. It turns light into sugar."
+    ok, _ = validate_question(make_question(source_snippet="happens in the chloroplast"), wrapped_page)
+    assert ok is True
+
+
 # Parsing the AI response
 
 def test_parse_keeps_only_valid_questions():

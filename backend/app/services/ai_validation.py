@@ -1,6 +1,11 @@
 import json
 from typing import List, Dict, Any, Tuple
 
+
+def _squash_whitespace(text: str) -> str:
+    return " ".join(text.split()).lower()
+
+
 def validate_question(question: Dict[str, Any], page_text: str) -> Tuple[bool, str]:
     """
     Validates:
@@ -16,8 +21,11 @@ def validate_question(question: Dict[str, Any], page_text: str) -> Tuple[bool, s
     if not isinstance(correct_idx, int) or correct_idx not in [0, 1, 2, 3]:
         return False, "Invalid correct_index (must be integer 0, 1, 2, or 3)"
     
-    snippet = question.get("source_snippet", "").strip()
-    if not snippet or snippet.lower() not in page_text.lower():
+    # PDF text has a line break wherever a printed line wraps, while the AI quotes
+    # the sentence with plain spaces, so whitespace is compared loosely.
+    raw_snippet = question.get("source_snippet")
+    snippet = _squash_whitespace(raw_snippet) if isinstance(raw_snippet, str) else ""
+    if not snippet or snippet not in _squash_whitespace(page_text):
         return False, "Source snippet not found in page text"
     
     return True, "Valid"
