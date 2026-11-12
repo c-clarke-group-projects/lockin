@@ -22,10 +22,36 @@ def list_quizzes(db: Session, host_id: int) -> list[tuple[Quiz, int]]:
 def get_quiz(db: Session, host_id: int, quiz_id: int) -> Quiz | None:
     statement = (
         select(Quiz)
-        .options(selectinload(Quiz.questions))
+        .options(selectinload(Quiz.questions).selectinload(Question.source_page))
         .where(Quiz.id == quiz_id, Quiz.host_id == host_id)
     )
     return db.scalar(statement)
+
+
+def delete_question(db: Session, host_id: int, quiz_id: int, question_id: int) -> bool:
+    question = db.scalar(
+        select(Question)
+        .join(Quiz, Quiz.id == Question.quiz_id)
+        .where(
+            Question.id == question_id,
+            Question.quiz_id == quiz_id,
+            Quiz.host_id == host_id,
+        )
+    )
+    if question is None:
+        return False
+
+    used_in_session = db.scalar(
+        select(QuizSession.id)
+        .where(QuizSession.quiz_id == quiz_id, QuizSession.status != "waiting")
+        .limit(1)
+    )
+    if used_in_session is not None:
+        raise QuizHasSessionsError
+
+    db.delete(question)
+    db.commit()
+    return True
 
 
 def create_quiz(db: Session, host_id: int, title: str) -> Quiz:

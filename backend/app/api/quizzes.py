@@ -51,11 +51,17 @@ def get_quiz(
         created_at=quiz.created_at,
         questions=[
             QuestionResponse(
+                id=question.id,
+                quiz_id=question.quiz_id,
                 text=question.text,
                 options=question.options,
                 correct_index=question.correct_index,
                 time_limit=question.time_limit,
                 source_snippet=question.source_snippet,
+                source_page_id=question.source_page_id,
+                source_page_number=(
+                    question.source_page.page_number if question.source_page else None
+                ),
                 origin=question.origin,
             )
             for question in quiz.questions
@@ -76,6 +82,30 @@ def create_quiz(
         created_at=quiz.created_at,
         question_count=0,
     )
+
+
+@router.delete("/{quiz_id}/questions/{question_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_question(
+    quiz_id: int,
+    question_id: int,
+    host_id: int = Depends(current_host_id),
+    db: Session = Depends(get_db),
+) -> Response:
+    try:
+        deleted = quiz_service.delete_question(db, host_id, quiz_id, question_id)
+    except QuizHasSessionsError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Questions cannot be removed after the quiz has been played.",
+        ) from exc
+
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Question not found.",
+        )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.delete("/{quiz_id}", status_code=status.HTTP_204_NO_CONTENT)
