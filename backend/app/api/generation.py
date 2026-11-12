@@ -96,6 +96,8 @@ async def generate_questions(
                 time_limit=question.time_limit,
                 source_snippet=question.source_snippet,
                 source_page_id=question.source_page_id,
+                source_material_id=result.material_id,
+                source_file_name=file.filename or "upload.pdf",
                 origin=question.origin,
             )
             for question in result.questions

@@ -127,15 +127,25 @@ def generate_from_pdf(
     max_calls = min(math.ceil(count / ai.AI_MIN_QUESTIONS) + MAX_EXTRA_PAGE_CALLS, MAX_PAGE_CALLS)
 
     created: list[Question] = []
-    pages_used = 0
-    for page in text_pages[:max_calls]:
+    seen_texts: set[str] = set()
+    used_page_ids: set[int] = set()
+    # A short PDF has fewer pages than allowed calls, so its pages are asked again.
+    for call in range(max_calls):
         remaining = count - len(created)
         if remaining <= 0:
             break
-        pages_used += 1
-        for item in _ask_for_page(page, remaining)[:remaining]:
+        page = text_pages[call % len(text_pages)]
+        used_page_ids.add(page.id)
+        for item in _ask_for_page(page, remaining):
+            key = " ".join(item["text"].split()).lower()
+            if key in seen_texts:
+                continue
+            seen_texts.add(key)
             created.append(_to_question(quiz_id, page, item))
+            if len(created) == count:
+                break
 
+    pages_used = len(used_page_ids)
     skipped = len(text_pages) - pages_used
     if skipped:
         logger.info("Skipped %s text pages of %s, enough questions or call limit", skipped, file_name)

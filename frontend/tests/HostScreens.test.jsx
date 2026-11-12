@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import * as api from '../src/lib/api';
 import { HostAuthPage } from '../src/pages/host/HostAuthPage';
@@ -106,5 +106,38 @@ describe('Host screens', () => {
     fireEvent.click(publish);
 
     expect(await screen.findByText('Live room page')).toBeInTheDocument();
+  });
+
+  it('6. editor groups questions by the PDF they came from and numbers each group from 1', async () => {
+    const question = (id, extra) => ({
+      id,
+      text: `Q${id}`,
+      options: ['a', 'b', 'c', 'd'],
+      correct_index: 0,
+      time_limit: 20,
+      origin: 'ai',
+      ...extra,
+    });
+    vi.spyOn(api, 'getQuiz').mockResolvedValue({
+      id: 4,
+      title: 'Cells',
+      created_at: '2026-11-01T10:00:00Z',
+      questions: [
+        question(1, { source_material_id: 7, source_file_name: 'week 1.pdf' }),
+        question(2, { source_material_id: 7, source_file_name: 'week 1.pdf' }),
+        question(3, { origin: 'manual' }),
+        question(4, { source_material_id: 9, source_file_name: 'week 2.pdf' }),
+      ],
+    });
+    renderAt('/host/quiz/4', <Route path="/host/quiz/:id" element={<QuizEditorPage />} />);
+
+    const first = await screen.findByRole('region', { name: 'week 1.pdf' });
+    const second = screen.getByRole('region', { name: 'week 2.pdf' });
+    const written = screen.getByRole('region', { name: 'Written by you' });
+
+    expect(within(first).getAllByText(/^Question \d$/).map((n) => n.textContent)).toEqual(['Question 1', 'Question 2']);
+    expect(within(second).getByText('Question 1')).toBeInTheDocument();
+    expect(within(written).getByText('Q3')).toBeInTheDocument();
+    expect(first.compareDocumentPosition(written) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

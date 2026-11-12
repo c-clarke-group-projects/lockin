@@ -62,6 +62,12 @@ def get_quiz(
                 source_page_number=(
                     question.source_page.page_number if question.source_page else None
                 ),
+                source_material_id=(
+                    question.source_page.material_id if question.source_page else None
+                ),
+                source_file_name=(
+                    question.source_page.material.file_name if question.source_page else None
+                ),
                 origin=question.origin,
             )
             for question in quiz.questions

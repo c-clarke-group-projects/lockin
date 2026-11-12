@@ -76,7 +76,6 @@ def test_missing_snippet_key_rejected():
     assert ok is False
 
 
-@pytest.mark.xfail(strict=True, raises=AttributeError, reason="None.strip() raises instead of rejecting")
 def test_null_snippet_rejected_without_crashing():
     ok, _ = validate_question(make_question(source_snippet=None), PAGE_TEXT)
     assert ok is False

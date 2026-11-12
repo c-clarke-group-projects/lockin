@@ -1145,6 +1145,35 @@ textarea.input {
   counter-reset: question;
 }
 
+.question-group {
+  display: grid;
+  gap: 12px;
+}
+
+.question-group + .question-group {
+  margin-top: 12px;
+}
+
+.question-group__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+
+.question-group__name {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.question-group__count {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
 .question {
   padding: 18px;
   border-radius: 22px;

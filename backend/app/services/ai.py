@@ -6,7 +6,9 @@ from typing import Dict, Any, List
 
 AI_PROVIDER = os.getenv("AI_PROVIDER", "gemini").lower()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+# gemini-1.5-flash was retired by Google and now returns 404. An empty value in
+# .env falls back to the default too.
+GEMINI_MODEL = os.getenv("GEMINI_MODEL") or "gemini-2.5-flash"
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3")
 

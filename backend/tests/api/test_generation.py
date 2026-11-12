@@ -3,7 +3,7 @@ from datetime import datetime
 
 import pytest
 import requests
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.entities import Host, Material, Question, Quiz
@@ -14,9 +14,12 @@ PDF_BYTES = b"%PDF-1.4\n1 0 obj\n<< >>\nendobj\n%%EOF\n"
 PAGE_TEXT = "Mitochondria produce most of the energy a cell uses."
 
 
-def ai_question(snippet: str = "Mitochondria produce most of the energy") -> dict:
+def ai_question(
+    snippet: str = "Mitochondria produce most of the energy",
+    text: str = "Which part of the cell produces most of its energy?",
+) -> dict:
     return {
-        "text": "Which part of the cell produces most of its energy?",
+        "text": text,
         "options": ["Mitochondria", "Nucleus", "Ribosome", "Golgi body"],
         "correct_index": 0,
         "source_snippet": snippet,
@@ -63,7 +66,7 @@ def generate(host_client, quiz_id: int, count: int = 5):
 def test_generate_saves_ai_questions_with_their_page(
     host_client, db_session: Session, quiz: Quiz, one_text_page, monkeypatch
 ) -> None:
-    prompts = fake_provider(monkeypatch, [ai_question()] * 5)
+    prompts = fake_provider(monkeypatch, [ai_question(text=f"Question {n}?") for n in range(5)])
 
     response = generate(host_client, quiz.id)
 
@@ -73,11 +76,38 @@ def test_generate_saves_ai_questions_with_their_page(
     assert body["pages_used"] == 1
     assert len(body["questions"]) == 5
     assert {q["origin"] for q in body["questions"]} == {"ai"}
+    assert {q["source_file_name"] for q in body["questions"]} == {"cells.pdf"}
+    assert {q["source_material_id"] for q in body["questions"]} == {body["material_id"]}
     saved = db_session.scalars(select(Question).where(Question.quiz_id == quiz.id)).all()
     assert len(saved) == 5
     assert saved[0].source_page.page_number == 1
     assert db_session.scalars(select(Material)).one().file_name == "cells.pdf"
     assert len(prompts) == 1 and PAGE_TEXT in prompts[0]
+
+
+def test_generate_asks_a_short_pdf_again_until_the_count_is_reached(
+    host_client, db_session: Session, quiz: Quiz, one_text_page, monkeypatch
+) -> None:
+    replies = iter([
+        [ai_question(text="Repeated?")] * 3,
+        [ai_question(text="Repeated?"), ai_question(text="New 1?"), ai_question(text="New 2?")],
+        [ai_question(text=f"Extra {n}?") for n in range(5)],
+    ])
+    calls: list[str] = []
+
+    def reply(prompt: str) -> str:
+        calls.append(prompt)
+        return json.dumps(next(replies))
+
+    monkeypatch.setattr(ai, "call_ai_provider_with_retry", reply)
+
+    response = generate(host_client, quiz.id)
+
+    assert response.status_code == 200
+    texts = [q["text"] for q in response.json()["questions"]]
+    assert texts == ["Repeated?", "New 1?", "New 2?", "Extra 0?", "Extra 1?"]
+    assert len(calls) == 3
+    assert db_session.scalar(select(func.count()).select_from(Question)) == 5
 
 
 def test_generate_drops_questions_whose_snippet_is_not_on_the_page(
