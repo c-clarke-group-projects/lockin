@@ -13,17 +13,16 @@ from fastapi import FastAPI
 from app.api.auth import router as auth_router
 from app.api.questions import router as questions_router
 from app.api.quizzes import router as quizzes_router
+from app.api.rooms import router as rooms_router
 from app.api.uplode import router as upload_router
 from app.api.question import router as question_crud_router
 from app.api.flags import router as flags_router
-from app.api.generation import router as generation_router
-from app.api.sessions import router as sessions_router
-from app.ws.endpoint import router as live_router
 
 app = FastAPI(title="LockIn API")
 
 app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
 app.include_router(upload_router, prefix="/api", tags=["Upload"])
+app.include_router(rooms_router, prefix="/api", tags=["Rooms"])
 app.include_router(quizzes_router, prefix="/api/quizzes", tags=["Quizzes"])
 app.include_router(questions_router, prefix="/api/questions", tags=["Questions"])
 app.include_router(
@@ -32,9 +31,6 @@ app.include_router(
     tags=["Questions"]
 )
 app.include_router(flags_router, prefix="/api/flags", tags=["Flags"])
-app.include_router(sessions_router, prefix="/api", tags=["Rooms"])
-app.include_router(generation_router, prefix="/api", tags=["Questions"])
-app.include_router(live_router, tags=["Live"])
 
 
 @app.get("/")

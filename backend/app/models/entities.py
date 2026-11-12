@@ -3,8 +3,10 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     CheckConstraint,
+    Column,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     JSON,
     SmallInteger,
@@ -149,6 +151,13 @@ class QuizSession(Base):
     __table_args__ = (
         CheckConstraint("length(join_code) = 6"),
         CheckConstraint("status IN ('waiting', 'running', 'ended')"),
+        Index(
+            "unique_active_session_join_code",
+            "join_code",
+            unique=True,
+            postgresql_where=(Column("status").in_(["waiting", "running"])),
+            sqlite_where=(Column("status").in_(["waiting", "running"])),
+        ),
     )
 
     id: Mapped[int] = mapped_column(ID_TYPE, primary_key=True)
@@ -250,3 +259,8 @@ class Flag(Base):
     session: Mapped[QuizSession] = relationship(back_populates="flags")
     question: Mapped[Question] = relationship(back_populates="flags")
     participant: Mapped[Participant] = relationship(back_populates="flags")
+
+
+# Backward-compatibility alias
+Session = QuizSession
+

@@ -10,6 +10,8 @@ from app.models.entities import (
     QuizSession,
 )
 
+Session = QuizSession
+
 __all__ = [
     "Answer",
     "Flag",
@@ -20,5 +22,5 @@ __all__ = [
     "Question",
     "Quiz",
     "QuizSession",
+    "Session",
 ]
-
