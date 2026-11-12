@@ -8,6 +8,7 @@ import { QuizEditorPage } from './pages/host/QuizEditorPage';
 import { HostLiveRoomPage } from './pages/host/HostLiveRoomPage';
 import { RequireHost } from './components/RequireHost';
 import { LeaderboardPage } from './pages/LeaderboardPage';
+import { FlaggedQuestionsPage } from './pages/FlaggedQuestionsPage';
 
 export function App() {
   return (
@@ -33,7 +34,10 @@ export function App() {
         {/* Leaderboard */}
         <Route path="/leaderboard" element={<LeaderboardPage />} />
         <Route path="/leaderboard/:code" element={<LeaderboardPage />} />
-
+        <Route
+          path="/host/sessions/:sessionId/flags"
+          element={<FlaggedQuestionsPage />}
+        />
         <Route path="*" element={<Navigate to="/join" replace />} />
       </Routes>
     </BrowserRouter>

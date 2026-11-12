@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { QuizWebSocketClient } from '../lib/websocket';
 import { Leaderboard } from '../components/Leaderboard';
+import { getAccessToken } from '../lib/api';
 
 const ROOM_CODE_REGEX = /^\d{6}$/;
 
@@ -30,6 +31,8 @@ export function LeaderboardPage({
   const [top, setTop] = useState([]);
   const [count, setCount] = useState(0);
   const [you, setYou] = useState(location.state?.you || null);
+  const [gameEnded, setGameEnded] = useState(false);
+  const [endedSessionId, setEndedSessionId] = useState(sessionId);
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(Boolean(activeClientNeedsConnect(clientOverride, roomCode)));
   const [errorMessage, setErrorMessage] = useState(!isCodeValid ? 'Invalid 6 digit room code.' : '');
@@ -74,6 +77,10 @@ export function LeaderboardPage({
         if (msg.data?.top) setTop(msg.data.top);
         if (msg.data?.count !== undefined) setCount(msg.data.count);
         if (msg.data?.you) setYou(msg.data.you);
+      }
+      if (msg.type === 'ended') {
+        setGameEnded(true);
+        if (msg.session_id) setEndedSessionId(msg.session_id);
       }
       if (msg.type === 'error') {
         setErrorMessage(msg.data?.message || 'Error received from server.');
@@ -191,10 +198,20 @@ export function LeaderboardPage({
           error={errorMessage}
           title={roomCode ? `Leaderboard (Room ${roomCode})` : 'Live Leaderboard'}
         />
+        {gameEnded && endedSessionId && getAccessToken() && (
+          <div className="post-game-actions">
+            <button
+              type="button"
+              className="primary-button"
+              onClick={() => navigate(`/host/sessions/${endedSessionId}/flags`)}
+            >
+              Review flagged questions
+            </button>
+          </div>
+        )}
       </main>
     </div>
   );
 }
 
 export default LeaderboardPage;
-

@@ -51,6 +51,10 @@ class MockQuizWebSocketClient {
 }
 
 describe('LeaderboardPage', () => {
+  beforeEach(() => {
+    window.localStorage.removeItem('access_token');
+  });
+
   it('renders page and validates room code from route', async () => {
     const mockClient = new MockQuizWebSocketClient();
 
@@ -121,5 +125,38 @@ describe('LeaderboardPage', () => {
     expect(screen.getByText('Superstar')).toBeInTheDocument();
     expect(screen.getByText('990')).toBeInTheDocument();
   });
-});
 
+  it('offers the host a flagged-question review after the game ends', () => {
+    window.localStorage.setItem('access_token', 'host-token');
+    const mockClient = new MockQuizWebSocketClient();
+
+    render(
+      <MemoryRouter initialEntries={['/leaderboard/654321']}>
+        <Routes>
+          <Route
+            path="/leaderboard/:code"
+            element={(
+              <LeaderboardPage
+                clientOverride={mockClient}
+                initialSessionId={42}
+              />
+            )}
+          />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    act(() => {
+      mockClient.emitMessage({
+        type: 'ended',
+        session_id: 42,
+        data: { top: [], count: 0 },
+      });
+    });
+
+    expect(
+      screen.getByRole('button', { name: 'Review flagged questions' })
+    ).toBeInTheDocument();
+    window.localStorage.removeItem('access_token');
+  });
+});
