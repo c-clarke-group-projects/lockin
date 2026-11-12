@@ -21,6 +21,7 @@ def now_ms() -> int:
 class ChosenAnswer:
     chosen_index: int
     is_correct: bool
+    answer_ms: int
     points: int
 
 
