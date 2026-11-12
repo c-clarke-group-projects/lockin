@@ -1,7 +1,7 @@
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.models.entities import Question, Quiz, QuizSession
+from app.models.entities import MaterialPage, Question, Quiz, QuizSession
 
 
 class QuizHasSessionsError(Exception):
@@ -22,7 +22,11 @@ def list_quizzes(db: Session, host_id: int) -> list[tuple[Quiz, int]]:
 def get_quiz(db: Session, host_id: int, quiz_id: int) -> Quiz | None:
     statement = (
         select(Quiz)
-        .options(selectinload(Quiz.questions).selectinload(Question.source_page))
+        .options(
+            selectinload(Quiz.questions)
+            .selectinload(Question.source_page)
+            .selectinload(MaterialPage.material)
+        )
         .where(Quiz.id == quiz_id, Quiz.host_id == host_id)
     )
     return db.scalar(statement)

@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models.entities import Host, Question, Quiz, QuizSession
+from app.models.entities import Host, Material, MaterialPage, Question, Quiz, QuizSession
 
 HOST_ID = 1
 OTHER_HOST_ID = 2
@@ -101,6 +101,39 @@ def test_open_quiz_returns_questions(host_client, db_session: Session) -> None:
             "origin": "manual",
         }
     ]
+
+
+def test_open_quiz_names_the_pdf_each_generated_question_came_from(
+    host_client, db_session: Session
+) -> None:
+    add_host(db_session, HOST_ID)
+    quiz = add_quiz(db_session, HOST_ID, "Quiz", datetime(2026, 10, 21))
+    material = Material(host_id=HOST_ID, file_name="week 3.pdf", page_count=1)
+    db_session.add(material)
+    db_session.flush()
+    page = MaterialPage(material_id=material.id, page_number=1, text="2 + 2 = 4")
+    db_session.add(page)
+    db_session.flush()
+    db_session.add(
+        Question(
+            quiz_id=quiz.id,
+            text="What is 2 + 2?",
+            options=["3", "4", "5", "6"],
+            correct_index=1,
+            time_limit=20,
+            source_snippet="2 + 2 = 4",
+            source_page_id=page.id,
+            origin="ai",
+        )
+    )
+    db_session.commit()
+
+    response = host_client.get(f"/api/quizzes/{quiz.id}")
+
+    question = response.json()["questions"][0]
+    assert question["source_file_name"] == "week 3.pdf"
+    assert question["source_material_id"] == material.id
+    assert question["source_page_number"] == 1
 
 
 def test_open_missing_quiz_returns_404(host_client) -> None:

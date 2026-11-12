@@ -59,6 +59,8 @@ class QuestionResponse(BaseModel):
     source_note: str | None = None
     source_page_id: int | None = None
     source_page_number: int | None = None
+    source_material_id: int | None = None
+    source_file_name: str | None = None
     origin: Literal["ai", "manual"]
 
 
